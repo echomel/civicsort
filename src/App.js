@@ -1,25 +1,1226 @@
-import logo from './logo.svg';
-import './App.css';
+import { useState, useEffect, useRef } from "react";
 
-function App() {
+// ── SEED DATA ────────────────────────────────────────────────────────────────
+const SEED = [
+  {
+    id:"p1", name:"Riverside Aquatic Center", slug:"riverside-aquatic",
+    type:"tournament", status:"active", color:"#1a3328", accent:"#d96b52",
+    responses:142, created:"2024-10-12",
+    description:"Help us prioritize features for the new aquatic center.",
+    demoEnabled:true, showResults:true, kioskMode:false, captcha:false,
+    options:[
+      {id:"o1",name:"Lap Pool (50m)",        desc:"Olympic-size lanes",      emoji:"🏊",img:null},
+      {id:"o2",name:"Leisure Pool & Slides", desc:"Family fun",              emoji:"🎢",img:null},
+      {id:"o3",name:"Hot Tubs & Spa",        desc:"Therapeutic pools",       emoji:"♨️",img:null},
+      {id:"o4",name:"Kids Splash Pad",       desc:"Zero-depth play area",    emoji:"💧",img:null},
+      {id:"o5",name:"Diving Boards",         desc:"1m and 3m springboards",  emoji:"🤿",img:null},
+    ],
+    demographics:[
+      {id:"d1",type:"zipcode",label:"ZIP Code"},
+      {id:"d2",type:"age",    label:"Age Range"},
+    ],
+    mockScores:{o1:48,o2:41,o3:29,o4:33,o5:22},
+  },
+  {
+    id:"p2", name:"Maplewood Library Programs", slug:"maplewood-library",
+    type:"roundrobin", status:"active", color:"#d96b52", accent:"#1a3328",
+    responses:89, created:"2024-11-01",
+    description:"Which library programs should we expand next year?",
+    demoEnabled:false, showResults:true, kioskMode:true, captcha:false,
+    options:[
+      {id:"o1",name:"After-School Tutoring", desc:"Free homework help K-12",   emoji:"📚",img:null},
+      {id:"o2",name:"Maker Space",           desc:"3D printing, laser cutting", emoji:"🔧",img:null},
+      {id:"o3",name:"Story Time",            desc:"Early literacy ages 0-5",    emoji:"📖",img:null},
+      {id:"o4",name:"Job Skills Workshops",  desc:"Resume and interview prep",  emoji:"💼",img:null},
+    ],
+    demographics:[],
+    mockScores:{o1:22,o2:18,o3:25,o4:12},
+  },
+];
+
+const MOCK_USERS = [
+  {id:"u1",name:"Sarah Chen",    org:"Riverside Consulting", email:"sarah@riversidecg.com",  plan:"Bundle of 3",credits:2,status:"active"},
+  {id:"u2",name:"Marcus Webb",   org:"City of Portland",     email:"mwebb@portland.gov",     plan:"Bundle of 6",credits:5,status:"active"},
+  {id:"u3",name:"Aisha Kamara",  org:"Freelance",            email:"aisha@placemaking.co",   plan:"Single",     credits:0,status:"active"},
+  {id:"u4",name:"Tom Brannigan", org:"Park Associates LLC",  email:"tom@parkassoc.com",      plan:"Bundle of 3",credits:1,status:"suspended"},
+];
+
+// ── VOTING LOGIC ─────────────────────────────────────────────────────────────
+
+// ROUND ROBIN: every option vs every other → full ranked list
+function buildRR(opts) {
+  const pairs = [];
+  for (let i = 0; i < opts.length; i++)
+    for (let j = i + 1; j < opts.length; j++)
+      pairs.push([opts[i], opts[j]]);
+  return pairs;
+}
+
+function calcRR(opts, votes) {
+  const wins = {};
+  opts.forEach(o => { wins[o.id] = 0; });
+  votes.forEach(id => { if (wins[id] !== undefined) wins[id]++; });
+  return [...opts].map(o => ({...o, score: wins[o.id]||0})).sort((a,b) => b.score - a.score);
+}
+
+// TOURNAMENT: real single-elimination bracket → top-3 podium
+function initTournament(opts) {
+  let pool = [...opts];
+  let size = 1;
+  while (size < pool.length) size *= 2;
+  while (pool.length < size) pool.push(null); // byes
+
+  const matchups = [], autoAdvance = [];
+  for (let i = 0; i < pool.length; i += 2) {
+    if (pool[i] && pool[i+1]) matchups.push([pool[i], pool[i+1]]);
+    else if (pool[i]) autoAdvance.push(pool[i]);
+  }
+  return { matchups, matchIdx:0, roundWinners:[...autoAdvance], allWinners:[], losers:[], done:false };
+}
+
+function tournamentVote(state, winnerId) {
+  const {matchups, matchIdx, roundWinners, allWinners, losers} = state;
+  const [a, b] = matchups[matchIdx];
+  const winner = a.id === winnerId ? a : b;
+  const loser  = a.id === winnerId ? b : a;
+  const newRW = [...roundWinners, winner];
+  const newLosers = [...losers, loser];
+  const nextIdx = matchIdx + 1;
+
+  if (nextIdx < matchups.length)
+    return {...state, matchIdx:nextIdx, roundWinners:newRW, losers:newLosers};
+
+  // Round complete
+  if (newRW.length === 1)
+    return {matchups:[], matchIdx:0, roundWinners:[], allWinners:[...allWinners, newRW[0]], losers:newLosers, done:true};
+
+  // Build next round
+  const nextMatchups = [], nextAuto = [];
+  for (let i = 0; i < newRW.length; i += 2) {
+    if (newRW[i+1]) nextMatchups.push([newRW[i], newRW[i+1]]);
+    else nextAuto.push(newRW[i]);
+  }
+  return {matchups:nextMatchups, matchIdx:0, roundWinners:[...nextAuto], allWinners, losers:newLosers, done:false};
+}
+
+function tDone(s) { return s.done; }
+function tTop3(s) {
+  const champ = s.allWinners[0] || s.roundWinners[0];
+  return [champ, ...[...s.losers].reverse().slice(0,2)].filter(Boolean);
+}
+
+// ── STYLES ───────────────────────────────────────────────────────────────────
+const CSS = `
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;1,9..144,300&family=Inter:wght@300;400;500;600&display=swap');
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --f:#1a3328;--fm:#254a3a;--fp:rgba(26,51,40,.06);
+  --c:#d96b52;--ch:#c45c44;
+  --bg:#f2f3f5;--sur:#fff;--sub:#f7f8fa;--ins:#e8eaed;
+  --bd:#e2e4e8;--bdm:#c8ccd4;
+  --i1:#111318;--i2:#3c4049;--i3:#6b7280;--i4:#9ca3af;
+  --gn:#16a34a;--gnb:#f0fdf4;--gnr:#bbf7d0;
+  --am:#d97706;--amb:#fffbeb;--amr:#fde68a;
+  --rd:#dc2626;--rdb:#fef2f2;--rdr:#fecaca;
+  --r1:6px;--r2:8px;--r3:12px;--r4:16px;
+  --s1:0 1px 2px rgba(0,0,0,.05);
+  --s3:0 4px 6px rgba(0,0,0,.05),0 2px 4px rgba(0,0,0,.04);
+  --s5:0 20px 25px rgba(0,0,0,.07),0 8px 10px rgba(0,0,0,.04);
+  --e:cubic-bezier(.4,0,.2,1);
+  --fd:'Fraunces',Georgia,serif;--fb:'Inter',system-ui,sans-serif;
+}
+body{font-family:var(--fb);background:var(--bg);color:var(--i1);line-height:1.5;-webkit-font-smoothing:antialiased;font-size:14px;}
+h1,h2,h3{font-family:var(--fd);}
+
+/* nav */
+.nav{position:sticky;top:0;z-index:100;height:56px;padding:0 24px;display:flex;align-items:center;justify-content:space-between;background:rgba(242,243,245,.92);backdrop-filter:blur(12px);border-bottom:1px solid var(--bd);}
+.logo{font-family:var(--fd);font-size:19px;font-weight:400;color:var(--f);display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none;}
+.logo em{color:var(--c);font-style:italic;}
+
+/* buttons */
+.btn{font-family:var(--fb);font-weight:500;font-size:13px;border:none;border-radius:var(--r2);cursor:pointer;transition:all .15s var(--e);display:inline-flex;align-items:center;gap:6px;white-space:nowrap;}
+.bxs{padding:4px 10px;font-size:11px;border-radius:var(--r1);}
+.bsm{padding:7px 14px;}
+.bmd{padding:9px 18px;}
+.blg{padding:12px 28px;font-size:15px;border-radius:var(--r3);}
+.bp{background:var(--f);color:#fff;}.bp:hover{background:var(--fm);}
+.bc{background:var(--c);color:#fff;}.bc:hover{background:var(--ch);}
+.bo{background:var(--sur);color:var(--i2);border:1px solid var(--bd);}.bo:hover{border-color:var(--bdm);background:var(--sub);}
+.bg{background:transparent;color:var(--i3);}.bg:hover{background:var(--sub);color:var(--i1);}
+.bdr{background:var(--rdb);color:var(--rd);border:1px solid var(--rdr);}
+.btn:disabled{opacity:.4;cursor:not-allowed;}
+
+/* cards */
+.card{background:var(--sur);border-radius:var(--r3);border:1px solid var(--bd);box-shadow:var(--s1);}
+.hov:hover{box-shadow:var(--s3);border-color:var(--bdm);transform:translateY(-1px);transition:all .15s var(--e);}
+
+/* badges */
+.badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:99px;font-size:11px;font-weight:500;font-family:var(--fb);}
+.bgg{background:var(--gnb);color:var(--gn);border:1px solid var(--gnr);}
+.bgy{background:var(--sub);color:var(--i3);border:1px solid var(--bd);}
+.bga{background:var(--amb);color:var(--am);border:1px solid var(--amr);}
+
+/* forms */
+.fi{display:flex;flex-direction:column;gap:5px;}
+.lbl{font-size:11px;font-weight:500;color:var(--i3);letter-spacing:.04em;text-transform:uppercase;}
+.inp,.ta,.sel{font-family:var(--fb);font-size:13px;background:var(--sur);border:1px solid var(--bd);border-radius:var(--r2);color:var(--i1);transition:all .14s;width:100%;}
+.inp{padding:8px 12px;}.ta{padding:8px 12px;resize:vertical;min-height:72px;}.sel{padding:8px 12px;cursor:pointer;}
+.inp:focus,.ta:focus,.sel:focus{outline:none;border-color:var(--f);box-shadow:0 0 0 3px var(--fp);}
+.inp::placeholder{color:var(--i4);}
+
+/* toggle */
+.togw{display:flex;align-items:flex-start;gap:10px;cursor:pointer;user-select:none;}
+.tog{position:relative;width:36px;height:20px;background:var(--ins);border-radius:99px;transition:all .18s;flex-shrink:0;margin-top:2px;border:1px solid var(--bdm);}
+.tog.on{background:var(--f);border-color:var(--f);}
+.tog::after{content:'';position:absolute;width:14px;height:14px;border-radius:50%;background:white;top:2px;left:2px;transition:all .18s;box-shadow:0 1px 2px rgba(0,0,0,.15);}
+.tog.on::after{transform:translateX(16px);}
+
+/* tabs */
+.tline{display:flex;border-bottom:1px solid var(--bd);margin-bottom:24px;}
+.tl{padding:9px 16px;font-size:13px;color:var(--i3);cursor:pointer;border:none;background:transparent;font-family:var(--fb);border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .13s;}
+.tl:hover{color:var(--i2);}.tl.on{color:var(--i1);font-weight:500;border-bottom-color:var(--f);}
+.tpill{display:flex;gap:1px;background:var(--sub);border-radius:var(--r2);padding:3px;margin-bottom:20px;border:1px solid var(--bd);}
+.tp{flex:1;padding:6px 8px;border-radius:6px;font-size:12px;color:var(--i3);cursor:pointer;transition:all .13s;text-align:center;border:none;background:transparent;font-family:var(--fb);}
+.tp.on{background:var(--sur);color:var(--i1);font-weight:500;box-shadow:var(--s1);}
+
+/* layout */
+.dash{display:grid;grid-template-columns:220px 1fr;min-height:calc(100vh - 56px);}
+.sb{background:var(--sur);border-right:1px solid var(--bd);padding:16px 8px;display:flex;flex-direction:column;gap:1px;}
+.sbsec{font-size:11px;font-weight:500;color:var(--i4);padding:12px 10px 4px;letter-spacing:.05em;text-transform:uppercase;}
+.sbit{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:var(--r1);font-size:13px;color:var(--i3);cursor:pointer;transition:all .12s;border:none;background:none;font-family:var(--fb);width:100%;text-align:left;}
+.sbit:hover{background:var(--sub);color:var(--i2);}.sbit.on{background:var(--sub);color:var(--i1);font-weight:500;}
+.main{padding:32px 36px;overflow-y:auto;max-height:calc(100vh - 56px);}
+.ph{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:28px;gap:16px;flex-wrap:wrap;}
+.pt{font-size:24px;font-weight:300;letter-spacing:-.02em;margin-bottom:2px;}
+.pst{font-size:13px;color:var(--i3);}
+
+/* hero */
+.hero{background:var(--f);padding:96px 28px 88px;text-align:center;color:white;position:relative;overflow:hidden;}
+.hero::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 80% -10%,rgba(217,107,82,.22) 0%,transparent 50%);}
+.hero::after{content:'';position:absolute;bottom:-1px;left:0;right:0;height:48px;background:var(--bg);clip-path:ellipse(55% 100% at 50% 100%);}
+.hpill{display:inline-flex;align-items:center;background:rgba(255,255,255,.09);border:1px solid rgba(255,255,255,.18);color:rgba(255,255,255,.85);font-size:11px;font-weight:500;letter-spacing:.06em;text-transform:uppercase;padding:4px 14px;border-radius:99px;margin-bottom:22px;}
+.hero h1{font-size:clamp(34px,5.5vw,60px);line-height:1.06;margin-bottom:18px;font-weight:300;letter-spacing:-.02em;}
+.hero h1 em{color:#e8a090;font-style:italic;}
+.hero p{font-size:17px;opacity:.72;max-width:480px;margin:0 auto 32px;font-weight:300;}
+
+/* vote page */
+.vpage{min-height:100vh;background:var(--bg);display:flex;flex-direction:column;}
+.vhdr{padding:12px 20px;background:var(--sur);border-bottom:1px solid var(--bd);display:flex;align-items:center;gap:12px;}
+.vbody{flex:1;padding:32px 20px 48px;max-width:600px;margin:0 auto;width:100%;}
+.vpb{height:3px;background:var(--ins);border-radius:99px;margin-bottom:28px;overflow:hidden;}
+.vpf{height:100%;border-radius:99px;transition:width .4s var(--e);}
+.vq{text-align:center;font-family:var(--fd);font-size:clamp(18px,3.5vw,26px);margin-bottom:24px;line-height:1.3;font-weight:300;}
+.vgrid{display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:center;}
+.vc{background:var(--sur);border:1.5px solid var(--bd);border-radius:var(--r4);padding:24px 14px 20px;text-align:center;cursor:pointer;transition:all .15s var(--e);display:flex;flex-direction:column;align-items:center;gap:10px;min-height:160px;justify-content:center;}
+.vc:hover{border-color:var(--f);box-shadow:0 10px 15px rgba(0,0,0,.06);transform:translateY(-2px);}
+.vc.sel{border-color:var(--f);background:var(--fp);}
+.vcimg{width:100%;height:96px;object-fit:cover;border-radius:var(--r2);}
+.vcn{font-weight:600;font-size:14px;line-height:1.3;}
+.vcd{font-size:12px;color:var(--i3);line-height:1.5;}
+.vschip{width:36px;height:36px;border-radius:50%;background:var(--sub);border:1px solid var(--bd);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;color:var(--i4);flex-shrink:0;}
+
+/* results */
+.podium{display:flex;align-items:flex-end;justify-content:center;gap:10px;margin:20px 0 28px;}
+.pcol{display:flex;flex-direction:column;align-items:center;gap:8px;}
+.pbar{border-radius:8px 8px 0 0;display:flex;align-items:flex-end;justify-content:center;padding-bottom:9px;font-family:var(--fd);font-size:20px;color:white;}
+.pg{background:#d4a820;height:100px;width:76px;}
+.psi{background:#9aaab8;height:78px;width:68px;}
+.pb2{background:#c07848;height:60px;width:60px;}
+.pname{font-size:11px;font-weight:500;text-align:center;max-width:80px;line-height:1.3;color:var(--i2);}
+.rrow{display:flex;align-items:center;gap:12px;padding:10px 14px;background:var(--sur);border:1px solid var(--bd);border-radius:var(--r2);margin-bottom:6px;}
+.rrnk{width:24px;height:24px;border-radius:50%;background:var(--sub);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:var(--i3);flex-shrink:0;}
+.rbar{height:6px;background:var(--ins);border-radius:99px;overflow:hidden;margin-top:5px;}
+.rfill{height:100%;border-radius:99px;transition:width 1s var(--e);}
+
+/* stats */
+.srow{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:24px;}
+.sc{padding:16px 18px;}.sv{font-family:var(--fd);font-size:28px;color:var(--f);line-height:1;font-weight:300;}.sl{font-size:12px;color:var(--i3);margin-top:3px;}
+
+/* data table */
+.dtwrap{overflow-x:auto;border-radius:var(--r3);border:1px solid var(--bd);}
+.dt{width:100%;border-collapse:collapse;font-size:12px;}
+.dt th{padding:9px 14px;text-align:left;font-size:11px;font-weight:500;color:var(--i3);background:var(--sub);border-bottom:1px solid var(--bd);white-space:nowrap;position:sticky;top:0;z-index:2;}
+.dt td{padding:9px 14px;border-bottom:1px solid var(--bd);color:var(--i2);vertical-align:middle;white-space:nowrap;}
+.dt tr:last-child td{border-bottom:none;}
+.dt tbody tr:hover td{background:var(--sub);}
+.dt tr.selr td{background:var(--fp) !important;}
+
+/* modal */
+.mov{position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.35);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;padding:20px;}
+.modal{background:var(--sur);border-radius:var(--r4);box-shadow:var(--s5);border:1px solid var(--bd);width:100%;max-width:540px;max-height:92vh;overflow-y:auto;}
+.mh{padding:20px 22px 0;display:flex;justify-content:space-between;align-items:center;}
+.mb{padding:16px 22px 22px;}
+.mf{padding:12px 22px;border-top:1px solid var(--bd);display:flex;gap:8px;justify-content:flex-end;}
+
+/* misc */
+.chip{display:inline-flex;align-items:center;gap:4px;padding:4px 10px;background:var(--sub);border:1px solid var(--bd);border-radius:99px;font-size:12px;color:var(--i2);}
+.divider{height:1px;background:var(--bd);margin:14px 0;}
+.kbar{background:var(--f);color:rgba(255,255,255,.9);text-align:center;padding:7px 16px;font-size:11px;font-weight:500;letter-spacing:.06em;text-transform:uppercase;display:flex;align-items:center;justify-content:center;gap:14px;}
+.aler{padding:10px 14px;border-radius:var(--r2);font-size:13px;display:flex;gap:9px;align-items:flex-start;line-height:1.5;}
+.alw{background:var(--amb);border:1px solid var(--amr);color:#854d0e;}
+.ali{background:var(--gnb);border:1px solid var(--gnr);color:#14532d;}
+.oth{width:40px;height:40px;border-radius:var(--r1);background:var(--sub);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:18px;overflow:hidden;cursor:pointer;position:relative;border:1px solid var(--bd);}
+.oth img{width:100%;height:100%;object-fit:cover;}
+.othlbl{position:absolute;inset:0;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center;font-size:10px;color:white;border-radius:var(--r1);}
+.oth:hover .othlbl{display:flex;}
+
+/* export */
+.exlay{display:grid;grid-template-columns:260px 1fr;min-height:calc(100vh - 56px);}
+.exsb{background:var(--sur);border-right:1px solid var(--bd);padding:24px;display:flex;flex-direction:column;gap:16px;}
+.exmain{padding:32px;overflow-y:auto;}
+.exrep{max-width:660px;margin:0 auto;}
+.rephdr{border-radius:var(--r4);padding:28px 32px;color:white;margin-bottom:20px;}
+.repsec{background:var(--sur);border:1px solid var(--bd);border-radius:var(--r4);padding:24px;margin-bottom:16px;}
+
+/* super admin */
+.supanel{background:var(--f);color:white;padding:48px 28px;}
+.sutbl{width:100%;border-collapse:collapse;font-size:13px;}
+.sutbl th{padding:8px 12px;text-align:left;font-size:11px;font-weight:500;color:rgba(255,255,255,.5);border-bottom:1px solid rgba(255,255,255,.12);letter-spacing:.04em;text-transform:uppercase;}
+.sutbl td{padding:10px 12px;border-bottom:1px solid rgba(255,255,255,.08);color:rgba(255,255,255,.85);}
+.sutbl tr:last-child td{border-bottom:none;}
+.sutbl tr:hover td{background:rgba(255,255,255,.04);}
+
+/* animations */
+.toast{position:fixed;bottom:20px;right:20px;z-index:999;background:var(--i1);color:white;padding:10px 18px;border-radius:var(--r2);font-size:13px;box-shadow:var(--s5);animation:fuA .2s var(--e);}
+.toast.s{background:#15803d;}
+@keyframes fuA{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
+@keyframes slI{from{opacity:0;transform:scale(.97);}to{opacity:1;transform:scale(1);}}
+.fai{animation:fuA .25s var(--e) forwards;}
+.sli{animation:slI .2s var(--e) forwards;}
+@media(max-width:768px){
+  .dash{grid-template-columns:1fr;}.sb{display:none;}
+  .vgrid{grid-template-columns:1fr;}.vschip{display:none;}
+  .exlay{grid-template-columns:1fr;}.exsb{display:none;}
+}
+`;
+
+// ── SMALL COMPONENTS ─────────────────────────────────────────────────────────
+function Logo({size=24,light=false}){
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
+    <svg width={size} height={size} viewBox="0 0 28 28" fill="none">
+      <circle cx="14" cy="14" r="14" fill={light?"rgba(255,255,255,.12)":"#1a3328"}/>
+      <path d="M8 21L14 8L20 21" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
+      <line x1="9.5" y1="17" x2="18.5" y2="17" stroke="white" strokeWidth="1.8" strokeLinecap="round"/>
+      <circle cx="14" cy="8" r="2" fill="#d96b52"/>
+    </svg>
+  );
+}
+
+function NavLogo({onClick,light}){
+  return (
+    <div className="logo" style={light?{color:"rgba(255,255,255,.9)"}:{}} onClick={onClick}>
+      <Logo light={light}/><span>Civic<em>Sort</em></span>
     </div>
   );
 }
 
-export default App;
+function LangPicker({lang,setLang}){
+  const [open,setOpen]=useState(false);
+  const opts=[{c:"en",f:"🇺🇸",l:"English"},{c:"es",f:"🇪🇸",l:"Español"},{c:"fr",f:"🇫🇷",l:"Français"},{c:"zh",f:"🇨🇳",l:"中文"},{c:"vi",f:"🇻🇳",l:"Tiếng Việt"},{c:"ar",f:"🇸🇦",l:"العربية"},{c:"so",f:"🇸🇴",l:"Somali"},{c:"pt",f:"🇧🇷",l:"Português"},{c:"ko",f:"🇰🇷",l:"한국어"},{c:"ru",f:"🇷🇺",l:"Русский"}];
+  const cur=opts.find(o=>o.c===lang)||opts[0];
+  return (
+    <div style={{position:"relative"}}>
+      <button style={{display:"flex",alignItems:"center",gap:5,padding:"6px 10px",borderRadius:"var(--r1)",background:"var(--sub)",border:"1px solid var(--bd)",fontSize:12,color:"var(--i2)",cursor:"pointer",fontFamily:"var(--fb)"}} onClick={()=>setOpen(o=>!o)}>
+        {cur.f} {cur.l} ▾
+      </button>
+      {open&&(
+        <div style={{position:"absolute",top:"calc(100% + 4px)",right:0,background:"var(--sur)",borderRadius:"var(--r2)",boxShadow:"var(--s5)",border:"1px solid var(--bd)",minWidth:168,zIndex:50,overflow:"hidden"}}>
+          {opts.map(o=>(
+            <div key={o.c} onClick={()=>{setLang(o.c);setOpen(false);}} style={{display:"flex",alignItems:"center",gap:9,padding:"8px 12px",fontSize:13,cursor:"pointer",background:lang===o.c?"var(--sub)":"transparent",color:lang===o.c?"var(--f)":"var(--i1)",fontWeight:lang===o.c?500:400}}>
+              {o.f} {o.l}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── ROOT ─────────────────────────────────────────────────────────────────────
+export default function App(){
+  const [view,setView]=useState("landing");
+  const [tab,setTab]=useState("projects");
+  const [projects,setProjects]=useState(SEED);
+  const [editP,setEditP]=useState(null);
+  const [showModal,setShowModal]=useState(false);
+  const [toast,setToast]=useState(null);
+  const [vs,setVS]=useState(null);
+  const [exportP,setExportP]=useState(null);
+  const [superOpen,setSuperOpen]=useState(false);
+
+  const notify=(msg,type)=>{setToast({msg,type});setTimeout(()=>setToast(null),3000);};
+
+  const launchVote=p=>{
+    if(p.type==="tournament"){
+      const tState=initTournament(p.options);
+      setVS({project:p,mode:"tournament",tState,rrPairs:[],rrIdx:0,rrVotes:[],step:"intro",demo:{},lang:"en",capDone:false,isPreview:true});
+    } else {
+      const rrPairs=buildRR(p.options);
+      setVS({project:p,mode:"roundrobin",tState:null,rrPairs,rrIdx:0,rrVotes:[],step:"intro",demo:{},lang:"en",capDone:false,isPreview:true});
+    }
+    setView("voting");
+  };
+
+  const saveProject=data=>{
+    if(data.id){setProjects(ps=>ps.map(p=>p.id===data.id?data:p));notify("Saved","s");}
+    else{setProjects(ps=>[{...data,id:"p"+Date.now(),responses:0,created:new Date().toISOString().split("T")[0],mockScores:{},...ps[0]&&{}}, ...ps]);notify("Created","s");}
+    setShowModal(false);setEditP(null);
+  };
+
+  return (
+    <>
+      <style>{CSS}</style>
+      {view==="landing" && <Landing onLogin={()=>setView("login")} onDash={()=>setView("dashboard")} onDemo={()=>launchVote(SEED[0])} superOpen={superOpen} setSuperOpen={setSuperOpen}/>}
+      {view==="login"   && <Login onLogin={()=>setView("dashboard")} onBack={()=>setView("landing")}/>}
+      {view==="dashboard" && <Dashboard tab={tab} setTab={setTab} projects={projects} onBack={()=>setView("landing")} onVote={launchVote} onResults={p=>{setExportP(p);setView("export");}} onNew={()=>{setEditP(null);setShowModal(true);}} onEdit={p=>{setEditP(p);setShowModal(true);}} onDelete={id=>{setProjects(ps=>ps.filter(p=>p.id!==id));notify("Deleted");}}/>}
+      {view==="voting"  && vs && <VotePage vs={vs} setVS={setVS} onExit={()=>setView("dashboard")}/>}
+      {view==="export"  && exportP && <ExportPage project={exportP} projects={projects} onBack={()=>setView("dashboard")}/>}
+      {showModal && <ProjectModal project={editP} onSave={saveProject} onClose={()=>{setShowModal(false);setEditP(null);}}/>}
+      {toast && <div className={`toast${toast.type==="s"?" s":""}`}>{toast.msg}</div>}
+    </>
+  );
+}
+
+// ── LANDING ──────────────────────────────────────────────────────────────────
+function Landing({onLogin,onDash,onDemo,superOpen,setSuperOpen}){
+  return (
+    <div>
+      <nav className="nav">
+        <NavLogo/>
+        <div style={{display:"flex",gap:8}}>
+          <button className="btn bg bsm" onClick={onLogin}>Log in</button>
+          <button className="btn bp bsm" onClick={onDash}>Get started</button>
+        </div>
+      </nav>
+
+      <div className="hero">
+        <div style={{position:"relative",zIndex:1}}>
+          <div className="hpill">🗳️ Community Prioritization Platform</div>
+          <h1>Hear what your<br/><em>community values most.</em></h1>
+          <p>Premium pairwise voting for parks, aquatic centers, libraries, and placemaking projects.</p>
+          <div style={{display:"flex",gap:10,justifyContent:"center",flexWrap:"wrap"}}>
+            <button className="btn bc blg" onClick={onDash}>Start building →</button>
+            <button className="btn blg" style={{background:"rgba(255,255,255,.09)",color:"rgba(255,255,255,.85)",border:"1px solid rgba(255,255,255,.2)"}} onClick={onDemo}>Live demo</button>
+          </div>
+        </div>
+      </div>
+
+      <div className="section" style={{padding:"64px 28px",maxWidth:1080,margin:"0 auto"}}>
+        <div style={{textAlign:"center",marginBottom:48}}>
+          <h2 style={{fontSize:"clamp(24px,3.5vw,36px)",fontWeight:300,letterSpacing:"-.02em"}}>Built for civic engagement professionals</h2>
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(260px,1fr))",gap:16}}>
+          {[
+            {i:"⚡",t:"Quick Prioritization",d:"Single-elimination bracket. Surfaces a top-3 podium from up to 20 options."},
+            {i:"🔄",t:"Full Ranking",d:"Round robin — every option vs every other. Complete ranked list from up to 8 options."},
+            {i:"📟",t:"Kiosk Mode",d:"Auto-resets after each submission. Designed for shared iPads at public meetings."},
+            {i:"🌐",t:"12 Languages",d:"Voters choose their language. Option names and UI strings translate via AI."},
+            {i:"🖼️",t:"Image Upload",d:"Upload a photo per option — ideal for facility renderings or park amenities."},
+            {i:"📊",t:"Branded Export",d:"Results report with your logo and colors. Ready for council presentations."},
+          ].map(f=>(
+            <div key={f.t} className="card" style={{padding:24}}>
+              <div style={{width:40,height:40,borderRadius:"var(--r2)",background:"var(--fp)",color:"var(--f)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,marginBottom:12}}>{f.i}</div>
+              <h3 style={{fontSize:14,fontWeight:500,marginBottom:6,fontFamily:"var(--fb)"}}>{f.t}</h3>
+              <p style={{color:"var(--i3)",fontSize:13,lineHeight:1.6}}>{f.d}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div style={{background:"var(--sur)",borderTop:"1px solid var(--bd)",borderBottom:"1px solid var(--bd)"}}>
+        <div style={{padding:"64px 28px",maxWidth:820,margin:"0 auto"}}>
+          <div style={{textAlign:"center",marginBottom:40}}>
+            <h2 style={{fontSize:"clamp(22px,3vw,32px)",fontWeight:300,letterSpacing:"-.02em"}}>Pay per engagement, not per month.</h2>
+            <p style={{color:"var(--i3)",marginTop:8,fontSize:14}}>Window starts when you <strong>launch</strong> — not when you purchase.</p>
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(230px,1fr))",gap:16}}>
+            {[
+              {l:"Single",p:"$990",s:"1 exercise · 5,000 responses · 3 months",feat:false},
+              {l:"Bundle of 3",p:"$2,500",s:"Save $470 · best for active agencies",feat:true},
+              {l:"Bundle of 6",p:"$4,500",s:"Save $1,440 · large firms",feat:false},
+            ].map(pr=>(
+              <div key={pr.l} className="card" style={pr.feat?{padding:26,background:"var(--f)",border:"1px solid var(--f)"}:{padding:26}}>
+                <div className="badge" style={pr.feat?{background:"rgba(255,255,255,.12)",color:"rgba(255,255,255,.8)",border:"1px solid rgba(255,255,255,.15)"}:{}}>{pr.l}</div>
+                <div style={{fontFamily:"var(--fd)",fontSize:44,fontWeight:300,marginTop:14,color:pr.feat?"white":"var(--f)",letterSpacing:"-.02em"}}>{pr.p}</div>
+                <div style={{fontSize:12,color:pr.feat?"rgba(255,255,255,.55)":"var(--i3)",marginTop:3,marginBottom:16}}>{pr.s}</div>
+                <button className={`btn bmd ${pr.feat?"bc":"bp"}`} style={{width:"100%",justifyContent:"center"}} onClick={onDash}>Get started</button>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div style={{padding:"20px 28px",display:"flex",justifyContent:"space-between",alignItems:"center",borderTop:"1px solid var(--bd)",flexWrap:"wrap",gap:12}}>
+        <NavLogo onClick={()=>{}}/>
+        <p style={{fontSize:12,color:"var(--i4)"}}>© 2025 CivicSort · civicsort.com</p>
+        <button className="btn bg bxs" style={{fontSize:10,color:"var(--i4)",opacity:.5}} onClick={()=>setSuperOpen(o=>!o)}>
+          {superOpen?"▲ Admin":"▾ Admin"}
+        </button>
+      </div>
+
+      {superOpen && <SuperPanel/>}
+    </div>
+  );
+}
+
+// ── SUPER ADMIN ───────────────────────────────────────────────────────────────
+function SuperPanel(){
+  const [users,setUsers]=useState(MOCK_USERS);
+  const [stab,setStab]=useState("users");
+  const upd=(id,patch)=>setUsers(us=>us.map(u=>u.id===id?{...u,...patch}:u));
+  return (
+    <div className="supanel">
+      <div style={{maxWidth:1080,margin:"0 auto"}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24}}>
+          <div>
+            <h2 style={{fontFamily:"var(--fd)",fontWeight:300,fontSize:22,color:"white"}}>Super Admin</h2>
+            <p style={{fontSize:13,color:"rgba(255,255,255,.5)",marginTop:2}}>Manage users, accounts, and platform settings</p>
+          </div>
+        </div>
+        <div style={{display:"flex",gap:2,marginBottom:24}}>
+          {["users","settings","plans"].map(t=>(
+            <button key={t} onClick={()=>setStab(t)} style={{padding:"7px 16px",borderRadius:"var(--r1)",border:"none",fontFamily:"var(--fb)",fontSize:13,cursor:"pointer",textTransform:"capitalize",background:stab===t?"rgba(255,255,255,.15)":"transparent",color:stab===t?"white":"rgba(255,255,255,.5)",fontWeight:stab===t?500:400,transition:"all .14s"}}>{t}</button>
+          ))}
+        </div>
+
+        {stab==="users"&&(
+          <div style={{overflowX:"auto",borderRadius:"var(--r3)",border:"1px solid rgba(255,255,255,.12)"}}>
+            <table className="sutbl">
+              <thead><tr><th>Name</th><th>Org</th><th>Email</th><th>Plan</th><th>Credits</th><th>Status</th><th>Actions</th></tr></thead>
+              <tbody>
+                {users.map(u=>(
+                  <tr key={u.id}>
+                    <td style={{fontWeight:500}}>{u.name}</td>
+                    <td>{u.org}</td>
+                    <td style={{fontFamily:"monospace",fontSize:12,color:"rgba(255,255,255,.55)"}}>{u.email}</td>
+                    <td>
+                      <select value={u.plan} onChange={e=>upd(u.id,{plan:e.target.value})} style={{background:"rgba(255,255,255,.08)",border:"1px solid rgba(255,255,255,.15)",color:"white",borderRadius:"var(--r1)",padding:"4px 8px",fontSize:12,fontFamily:"var(--fb)",cursor:"pointer"}}>
+                        {["Single","Bundle of 3","Bundle of 6"].map(p=><option key={p}>{p}</option>)}
+                      </select>
+                    </td>
+                    <td>
+                      <div style={{display:"flex",alignItems:"center",gap:6}}>
+                        <button onClick={()=>upd(u.id,{credits:Math.max(0,u.credits-1)})} style={{width:22,height:22,borderRadius:4,border:"1px solid rgba(255,255,255,.2)",background:"rgba(255,255,255,.08)",color:"white",cursor:"pointer",fontFamily:"var(--fb)"}}>−</button>
+                        <span style={{minWidth:16,textAlign:"center"}}>{u.credits}</span>
+                        <button onClick={()=>upd(u.id,{credits:u.credits+1})} style={{width:22,height:22,borderRadius:4,border:"1px solid rgba(255,255,255,.2)",background:"rgba(255,255,255,.08)",color:"white",cursor:"pointer",fontFamily:"var(--fb)"}}>+</button>
+                      </div>
+                    </td>
+                    <td>
+                      <span style={{display:"inline-flex",alignItems:"center",padding:"2px 8px",borderRadius:99,fontSize:11,fontWeight:500,background:u.status==="active"?"rgba(22,163,74,.25)":"rgba(220,38,38,.25)",color:u.status==="active"?"#86efac":"#fca5a5",border:`1px solid ${u.status==="active"?"rgba(22,163,74,.4)":"rgba(220,38,38,.4)"}`}}>{u.status}</span>
+                    </td>
+                    <td>
+                      <button onClick={()=>upd(u.id,{status:u.status==="active"?"suspended":"active"})} style={{padding:"4px 10px",borderRadius:"var(--r1)",border:"1px solid rgba(255,255,255,.2)",background:"rgba(255,255,255,.08)",color:"rgba(255,255,255,.8)",fontSize:12,fontFamily:"var(--fb)",cursor:"pointer"}}>
+                        {u.status==="active"?"Suspend":"Reactivate"}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {stab==="settings"&&(
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(280px,1fr))",gap:14}}>
+            {[["Platform name","CivicSort"],["Support email","support@civicsort.com"],["Max options — Full Ranking","8"],["Max options — Quick Prioritization","20"],["Default response cap","5000"],["Exercise window (days)","90"]].map(([lbl,val])=>(
+              <div key={lbl} style={{display:"flex",flexDirection:"column",gap:5}}>
+                <label style={{fontSize:11,fontWeight:500,color:"rgba(255,255,255,.5)",letterSpacing:".04em",textTransform:"uppercase"}}>{lbl}</label>
+                <input defaultValue={val} style={{background:"rgba(255,255,255,.08)",border:"1px solid rgba(255,255,255,.15)",color:"white",borderRadius:"var(--r1)",padding:"8px 12px",fontSize:13,fontFamily:"var(--fb)"}}/>
+              </div>
+            ))}
+            <div style={{gridColumn:"1/-1"}}><button className="btn bc bsm">Save settings</button></div>
+          </div>
+        )}
+
+        {stab==="plans"&&(
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))",gap:16}}>
+            {[{name:"Single",price:990,responses:5000,days:90},{name:"Bundle of 3",price:2500,responses:5000,days:90},{name:"Bundle of 6",price:4500,responses:5000,days:90}].map(pl=>(
+              <div key={pl.name} style={{background:"rgba(255,255,255,.06)",border:"1px solid rgba(255,255,255,.12)",borderRadius:"var(--r3)",padding:20}}>
+                <div style={{fontFamily:"var(--fd)",fontSize:15,marginBottom:14,color:"white"}}>{pl.name}</div>
+                {[["Price ($)",pl.price],["Response cap",pl.responses],["Window (days)",pl.days]].map(([lbl,val])=>(
+                  <div key={lbl} style={{marginBottom:10}}>
+                    <label style={{fontSize:11,color:"rgba(255,255,255,.4)",display:"block",marginBottom:3}}>{lbl}</label>
+                    <input defaultValue={val} style={{background:"rgba(255,255,255,.08)",border:"1px solid rgba(255,255,255,.15)",color:"white",borderRadius:"var(--r1)",padding:"6px 10px",fontSize:13,fontFamily:"var(--fb)",width:"100%"}}/>
+                  </div>
+                ))}
+                <button style={{padding:"4px 10px",borderRadius:"var(--r1)",border:"1px solid rgba(255,255,255,.2)",background:"rgba(255,255,255,.1)",color:"rgba(255,255,255,.8)",fontSize:12,fontFamily:"var(--fb)",cursor:"pointer",marginTop:4}}>Update</button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── LOGIN ─────────────────────────────────────────────────────────────────────
+function Login({onLogin,onBack}){
+  const [e,setE]=useState("");const [p,setP]=useState("");
+  return (
+    <div style={{minHeight:"100vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:24}}>
+      <NavLogo onClick={onBack}/>
+      <div className="card" style={{width:"100%",maxWidth:380,padding:28,marginTop:24}}>
+        <h2 style={{fontSize:20,marginBottom:2,fontWeight:300}}>Welcome back</h2>
+        <p style={{fontSize:13,color:"var(--i3)",marginBottom:20}}>Sign in to your account</p>
+        <div style={{display:"flex",flexDirection:"column",gap:12}}>
+          <div className="fi"><label className="lbl">Email</label><input className="inp" type="email" placeholder="you@agency.com" value={e} onChange={ev=>setE(ev.target.value)}/></div>
+          <div className="fi"><label className="lbl">Password</label><input className="inp" type="password" placeholder="••••••••" value={p} onChange={ev=>setP(ev.target.value)}/></div>
+          <button className="btn bp bmd" style={{justifyContent:"center",marginTop:4}} onClick={onLogin}>Sign in →</button>
+        </div>
+        <p style={{fontSize:12,color:"var(--i3)",textAlign:"center",marginTop:16}}>New? <span style={{color:"var(--f)",cursor:"pointer",fontWeight:500}} onClick={onLogin}>Start free trial</span></p>
+      </div>
+    </div>
+  );
+}
+
+// ── DASHBOARD ─────────────────────────────────────────────────────────────────
+function Dashboard({tab,setTab,projects,onBack,onVote,onResults,onNew,onEdit,onDelete}){
+  const items=[{id:"projects",lbl:"Projects"},{id:"analytics",lbl:"Analytics"},{id:"account",lbl:"Account"}];
+  return (
+    <div>
+      <nav className="nav">
+        <NavLogo onClick={onBack}/>
+        <div style={{display:"flex",gap:8,alignItems:"center"}}>
+          <span style={{fontSize:12,color:"var(--i3)",padding:"5px 10px",background:"var(--sub)",borderRadius:"var(--r1)",border:"1px solid var(--bd)"}}>Riverside Consulting</span>
+          <button className="btn bg bsm" onClick={onBack}>← Home</button>
+        </div>
+      </nav>
+      <div className="dash">
+        <aside className="sb">
+          <div className="sbsec">Workspace</div>
+          {items.map(i=><button key={i.id} className={`sbit${tab===i.id?" on":""}`} onClick={()=>setTab(i.id)}>{i.lbl}</button>)}
+        </aside>
+        <main className="main">
+          {tab==="projects"  && <ProjectsView projects={projects} onNew={onNew} onVote={onVote} onResults={onResults} onEdit={onEdit} onDelete={onDelete}/>}
+          {tab==="analytics" && <AnalyticsView projects={projects}/>}
+          {tab==="account"   && <AccountView/>}
+        </main>
+      </div>
+    </div>
+  );
+}
+
+function ProjectsView({projects,onNew,onVote,onResults,onEdit,onDelete}){
+  return (
+    <div className="fai">
+      <div className="ph">
+        <div><h1 className="pt">Projects</h1><p className="pst">{projects.length} exercise{projects.length!==1?"s":""}</p></div>
+        <button className="btn bp bsm" onClick={onNew}>+ New project</button>
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(296px,1fr))",gap:16}}>
+        {projects.map(p=>(
+          <div key={p.id} className="card hov" style={{padding:20}}>
+            <div style={{height:3,borderRadius:99,background:p.color,marginBottom:16}}/>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,marginBottom:6}}>
+              <h3 style={{fontSize:14,fontWeight:500,fontFamily:"var(--fb)"}}>{p.name}</h3>
+              <span className={`badge ${p.status==="active"?"bgg":"bgy"}`}>{p.status}</span>
+            </div>
+            <p style={{fontSize:12,color:"var(--i3)",lineHeight:1.5,marginBottom:12}}>{p.description}</p>
+            <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:12}}>
+              <span className="chip">🗳 {p.responses}</span>
+              <span className="chip">{p.type==="roundrobin"?"Full Ranking":"Quick Prioritization"}</span>
+              {p.kioskMode&&<span className="chip">📟 Kiosk</span>}
+            </div>
+            <div style={{display:"flex",gap:6}}>
+              <button className="btn bp bsm" onClick={()=>onVote(p)}>Preview</button>
+              <button className="btn bo bsm" onClick={()=>onResults(p)}>Results</button>
+              <button className="btn bo bsm" onClick={()=>onEdit(p)}>Edit</button>
+              <button className="btn bg bsm" style={{color:"var(--i4)",marginLeft:"auto"}} onClick={()=>onDelete(p.id)}>✕</button>
+            </div>
+            <div style={{marginTop:12,padding:"7px 10px",background:"var(--sub)",borderRadius:"var(--r1)",border:"1px solid var(--bd)",display:"flex",alignItems:"center",gap:8}}>
+              <span style={{fontSize:11,color:"var(--f)",fontWeight:500}}>civicsort.com/{p.slug}</span>
+            </div>
+          </div>
+        ))}
+        <div className="card" style={{padding:24,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:8,border:"1.5px dashed var(--bd)",background:"transparent",cursor:"pointer",minHeight:180}} onClick={onNew}>
+          <span style={{fontSize:24,color:"var(--bdm)"}}>+</span>
+          <span style={{fontSize:13,color:"var(--i3)"}}>New project</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AnalyticsView({projects}){
+  const total=projects.reduce((a,p)=>a+p.responses,0);
+  return (
+    <div className="fai">
+      <div className="ph"><div><h1 className="pt">Analytics</h1><p className="pst">Across all projects</p></div></div>
+      <div className="srow">
+        {[{v:total,l:"Total responses"},{v:projects.filter(p=>p.status==="active").length,l:"Active"},{v:projects.length,l:"Total projects"},{v:"98%",l:"Completion rate"}].map(s=>(
+          <div key={s.l} className="card sc"><div className="sv">{s.v}</div><div className="sl">{s.l}</div></div>
+        ))}
+      </div>
+      {projects.map(p=>(
+        <div key={p.id} className="card" style={{padding:"12px 16px",display:"flex",alignItems:"center",gap:14,marginBottom:8}}>
+          <div style={{width:8,height:8,borderRadius:"50%",background:p.color,flexShrink:0}}/>
+          <div style={{flex:1}}><div style={{fontSize:13,fontWeight:500}}>{p.name}</div><div style={{fontSize:12,color:"var(--i3)"}}>{p.type==="roundrobin"?"Full Ranking":"Quick Prioritization"}</div></div>
+          <div style={{fontFamily:"var(--fd)",fontSize:24,color:"var(--f)",fontWeight:300}}>{p.responses}</div>
+          <div style={{width:80}}><div style={{height:4,background:"var(--ins)",borderRadius:99,overflow:"hidden"}}><div style={{height:"100%",width:`${Math.min(100,(p.responses/150)*100)}%`,background:p.color,borderRadius:99}}/></div></div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function AccountView(){
+  return (
+    <div className="fai">
+      <div className="ph"><div><h1 className="pt">Account</h1></div></div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(260px,1fr))",gap:16}}>
+        <div className="card" style={{padding:22}}>
+          <h3 style={{fontSize:14,fontWeight:500,fontFamily:"var(--fb)",marginBottom:12}}>Credits</h3>
+          <div style={{padding:14,background:"var(--sub)",borderRadius:"var(--r2)",border:"1px solid var(--bd)"}}>
+            <div style={{fontFamily:"var(--fd)",fontSize:32,color:"var(--f)",fontWeight:300}}>2</div>
+            <div style={{fontSize:12,color:"var(--i3)",marginTop:2}}>exercises remaining · Bundle of 3</div>
+          </div>
+          <button className="btn bp bsm" style={{marginTop:12}}>Buy more</button>
+        </div>
+        <div className="card" style={{padding:22}}>
+          <h3 style={{fontSize:14,fontWeight:500,fontFamily:"var(--fb)",marginBottom:12}}>Profile</h3>
+          <div style={{display:"flex",flexDirection:"column",gap:10}}>
+            <div className="fi"><label className="lbl">Organization</label><input className="inp" defaultValue="Riverside Consulting Group"/></div>
+            <div className="fi"><label className="lbl">Email</label><input className="inp" type="email" defaultValue="admin@riversidecg.com"/></div>
+            <button className="btn bp bsm" style={{alignSelf:"flex-start"}}>Save</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── EXPORT / RESULTS ──────────────────────────────────────────────────────────
+function ExportPage({project,projects,onBack}){
+  const [selId,setSelId]=useState(project.id);
+  const [rTab,setRTab]=useState("summary");
+  const [orgName,setOrgName]=useState("Riverside Consulting Group");
+  const [rawData,setRawData]=useState(()=>genRaw(project));
+  const [selected,setSelected]=useState(new Set());
+
+  const p=projects.find(x=>x.id===selId)||project;
+  useEffect(()=>{setRawData(genRaw(p));setSelected(new Set());},[selId]);
+
+  const results=[...p.options].map(o=>({...o,score:p.mockScores[o.id]||0})).sort((a,b)=>b.score-a.score);
+  const maxScore=results[0]?.score||1;
+  const total=results.reduce((a,r)=>a+r.score,0);
+  const medals=["🥇","🥈","🥉"];
+
+  const visible=rawData.filter(r=>!r.deleted);
+  const allChk=visible.length>0&&visible.every(r=>selected.has(r.id));
+  const toggle=id=>setSelected(s=>{const n=new Set(s);n.has(id)?n.delete(id):n.add(id);return n;});
+  const del=()=>{setRawData(d=>d.map(r=>selected.has(r.id)?{...r,deleted:true}:r));setSelected(new Set());};
+
+  return (
+    <div>
+      <nav className="nav">
+        <NavLogo/>
+        <div style={{display:"flex",gap:8}}>
+          <button className="btn bg bsm" onClick={onBack}>← Dashboard</button>
+          <button className="btn bc bsm" onClick={()=>window.print()}>Export PDF</button>
+        </div>
+      </nav>
+      <div className="exlay">
+        <div className="exsb">
+          <div className="fi"><label className="lbl">Project</label>
+            <select className="sel" value={selId} onChange={e=>setSelId(e.target.value)}>
+              {projects.map(px=><option key={px.id} value={px.id}>{px.name}</option>)}
+            </select>
+          </div>
+          <div className="fi"><label className="lbl">Org name</label><input className="inp" value={orgName} onChange={e=>setOrgName(e.target.value)}/></div>
+          <div>
+            <div className="lbl" style={{marginBottom:6}}>Accent color</div>
+            <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+              {["#1a3328","#d96b52","#25799B","#3D3580","#2d6a4f"].map(c=>(
+                <div key={c} style={{width:26,height:26,borderRadius:6,background:c,cursor:"pointer",border:p.color===c?"2px solid var(--i1)":"2px solid transparent"}}/>
+              ))}
+            </div>
+          </div>
+          <div className="divider"/>
+          <button className="btn bp bmd" style={{justifyContent:"center"}} onClick={()=>window.print()}>Export PDF</button>
+        </div>
+        <div className="exmain">
+          <div className="exrep">
+            <div className="tline">
+              {["summary","raw data"].map(t=><button key={t} className={`tl${rTab===t?" on":""}`} onClick={()=>setRTab(t)} style={{textTransform:"capitalize"}}>{t}</button>)}
+            </div>
+
+            {rTab==="summary"&&(
+              <div>
+                <div className="rephdr" style={{background:p.color}}>
+                  <h2 style={{fontFamily:"var(--fd)",fontSize:22,fontWeight:300,marginBottom:4}}>{p.name}</h2>
+                  <div style={{fontSize:13,opacity:.7}}>{orgName}</div>
+                  <div style={{fontSize:12,opacity:.55,marginTop:3}}>{p.type==="roundrobin"?"Full Ranking":"Quick Prioritization"} · {p.options.length} options · {p.responses} responses</div>
+                </div>
+                {results.length>=3&&(
+                  <div className="repsec" style={{background:"var(--f)",borderColor:"var(--f)"}}>
+                    <div style={{fontSize:11,fontWeight:500,letterSpacing:".08em",textTransform:"uppercase",color:"rgba(255,255,255,.5)",marginBottom:18,textAlign:"center"}}>
+                      {p.type==="tournament"?"Quick Prioritization — Top 3":"Full Ranking — Top 3"}
+                    </div>
+                    <div className="podium">
+                      <div className="pcol"><span style={{fontSize:22}}>🥈</span><div className="pbar psi">2</div><div className="pname" style={{color:"rgba(255,255,255,.7)"}}>{results[1]?.name}</div></div>
+                      <div className="pcol"><span style={{fontSize:30}}>🥇</span><div className="pbar pg">1</div><div className="pname" style={{color:"white",fontWeight:600}}>{results[0]?.name}</div></div>
+                      <div className="pcol"><span style={{fontSize:18}}>🥉</span><div className="pbar pb2">3</div><div className="pname" style={{color:"rgba(255,255,255,.7)"}}>{results[2]?.name}</div></div>
+                    </div>
+                  </div>
+                )}
+                <div className="repsec">
+                  <div style={{fontSize:11,fontWeight:500,color:"var(--i3)",marginBottom:14,letterSpacing:".04em",textTransform:"uppercase"}}>All Rankings</div>
+                  {results.map((r,i)=>(
+                    <div key={r.id} className="rrow">
+                      <div className="rrnk" style={i<3?{background:["#fef3c7","#f1f5f9","#fde8d8"][i],color:["#92400e","#374151","#78350f"][i]}:{}}>{i<3?medals[i]:i+1}</div>
+                      <div style={{flex:1}}>
+                        <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}><span style={{fontSize:13,fontWeight:500}}>{r.emoji} {r.name}</span><span style={{fontSize:12,color:"var(--i3)"}}>{total>0?Math.round((r.score/total)*100):0}%</span></div>
+                        <div className="rbar"><div className="rfill" style={{width:`${(r.score/maxScore)*100}%`,background:p.color}}/></div>
+                      </div>
+                      <div style={{fontSize:12,fontWeight:600,color:"var(--i3)",width:36,textAlign:"right"}}>{r.score}</div>
+                    </div>
+                  ))}
+                </div>
+                <div style={{textAlign:"center",fontSize:11,color:"var(--i4)",padding:"12px 0",borderTop:"1px solid var(--bd)"}}>Generated with <strong style={{color:"var(--f)"}}>CivicSort</strong> · {orgName}</div>
+              </div>
+            )}
+
+            {rTab==="raw data"&&(
+              <div>
+                <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:14,flexWrap:"wrap"}}>
+                  <div style={{flex:1}}><div style={{fontSize:13,fontWeight:500}}>{visible.length} responses</div><div style={{fontSize:12,color:"var(--i3)"}}>{rawData.filter(r=>r.deleted).length} deleted</div></div>
+                  {selected.size>0&&<button className="btn bdr bsm" onClick={del}>Delete {selected.size} row{selected.size!==1?"s":""}</button>}
+                  <button className="btn bo bsm">↓ CSV</button>
+                </div>
+                {selected.size>0&&<div className="aler alw" style={{marginBottom:12,fontSize:12}}>⚠ Deleted rows are excluded from rankings. Cannot be undone.</div>}
+                <div className="dtwrap">
+                  <table className="dt">
+                    <thead>
+                      <tr>
+                        <th style={{width:32}}><input type="checkbox" checked={allChk} onChange={()=>setSelected(allChk?new Set():new Set(visible.map(r=>r.id)))} style={{accentColor:"var(--f)"}}/></th>
+                        <th>#</th><th>Timestamp</th><th>Top Choice</th><th>ZIP</th><th>Age</th><th>Device</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {visible.map((row,i)=>(
+                        <tr key={row.id} className={selected.has(row.id)?"selr":""} onClick={()=>toggle(row.id)} style={{cursor:"pointer"}}>
+                          <td onClick={e=>e.stopPropagation()}><input type="checkbox" checked={selected.has(row.id)} onChange={()=>toggle(row.id)} style={{accentColor:"var(--f)"}}/></td>
+                          <td style={{color:"var(--i4)"}}>{i+1}</td>
+                          <td style={{fontFamily:"monospace",fontSize:11,color:"var(--i3)"}}>{new Date(row.ts).toLocaleDateString()} {new Date(row.ts).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})}</td>
+                          <td style={{fontWeight:500}}>{row.topChoice}</td>
+                          <td style={{color:"var(--i3)"}}>{row.zip||"—"}</td>
+                          <td style={{color:"var(--i3)"}}>{row.age||"—"}</td>
+                          <td style={{color:"var(--i3)",textTransform:"capitalize"}}>{row.device}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <div style={{fontSize:11,color:"var(--i4)",marginTop:8,textAlign:"right"}}>Click rows to select · Deleted rows excluded from results</div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function genRaw(project){
+  const zips=["97201","97202","97203","97204","97205"];
+  const ages=["18-24","25-34","35-44","45-54","55-64","65+"];
+  const devices=["mobile","tablet","desktop"];
+  return Array.from({length:38},(_,i)=>{
+    const ts=new Date(Date.now()-Math.random()*7*86400000);
+    const opt=project.options[Math.floor(Math.random()*project.options.length)];
+    return {id:"r"+(i+1),ts:ts.toISOString(),topChoice:opt.name,zip:Math.random()>.3?zips[Math.floor(Math.random()*zips.length)]:"",age:Math.random()>.4?ages[Math.floor(Math.random()*ages.length)]:"",device:devices[Math.floor(Math.random()*devices.length)],deleted:false};
+  });
+}
+
+// ── PROJECT MODAL ─────────────────────────────────────────────────────────────
+function ProjectModal({project,onSave,onClose}){
+  const isNew=!project;
+  const [form,setForm]=useState(project||{name:"",slug:"",type:"roundrobin",status:"draft",color:"#1a3328",accent:"#d96b52",description:"",demoEnabled:false,showResults:true,kioskMode:false,captcha:false,options:[{id:"o1",name:"Option A",desc:"",emoji:"⭐",img:null},{id:"o2",name:"Option B",desc:"",emoji:"⭐",img:null}],demographics:[],mockScores:{}});
+  const [iTab,setITab]=useState("basics");
+  const [newOpt,setNewOpt]=useState({name:"",desc:"",emoji:"🏆",img:null});
+  const imgRefs=useRef({});
+  const MAX=form.type==="roundrobin"?8:20;
+
+  const handleImg=(id,file)=>{
+    if(!file)return;
+    const r=new FileReader();
+    r.onload=e=>setForm(f=>({...f,options:f.options.map(o=>o.id===id?{...o,img:e.target.result}:o)}));
+    r.readAsDataURL(file);
+  };
+  const handleNewImg=file=>{
+    if(!file)return;
+    const r=new FileReader();
+    r.onload=e=>setNewOpt(n=>({...n,img:e.target.result}));
+    r.readAsDataURL(file);
+  };
+  const addOpt=()=>{
+    if(!newOpt.name.trim()||form.options.length>=MAX)return;
+    setForm(f=>({...f,options:[...f.options,{id:"o"+Date.now(),...newOpt}]}));
+    setNewOpt({name:"",desc:"",emoji:"🏆",img:null});
+  };
+
+  return (
+    <div className="mov" onClick={onClose}>
+      <div className="modal sli" onClick={e=>e.stopPropagation()}>
+        <div className="mh">
+          <h3 style={{fontSize:15,fontWeight:500,fontFamily:"var(--fb)"}}>{isNew?"New project":"Edit project"}</h3>
+          <button className="btn bg bxs" onClick={onClose}>✕</button>
+        </div>
+        <div style={{padding:"12px 22px 0"}}>
+          <div className="tpill">
+            {["basics","options","demographics","settings"].map(t=><button key={t} className={`tp${iTab===t?" on":""}`} onClick={()=>setITab(t)} style={{textTransform:"capitalize"}}>{t}</button>)}
+          </div>
+        </div>
+        <div className="mb">
+
+          {iTab==="basics"&&(
+            <div style={{display:"flex",flexDirection:"column",gap:14}}>
+              <div className="fi"><label className="lbl">Project name *</label>
+                <input className="inp" placeholder="e.g. Westside Park Master Plan" value={form.name}
+                  onChange={e=>setForm({...form,name:e.target.value,slug:e.target.value.toLowerCase().replace(/\s+/g,"-").replace(/[^a-z0-9-]/g,"")})}/>
+              </div>
+              <div className="fi"><label className="lbl">URL slug</label>
+                <div style={{display:"flex",borderRadius:"var(--r2)",overflow:"hidden",border:"1px solid var(--bd)"}}>
+                  <span style={{padding:"8px 10px",background:"var(--sub)",fontSize:12,color:"var(--i3)",whiteSpace:"nowrap",borderRight:"1px solid var(--bd)",fontFamily:"monospace"}}>civicsort.com/</span>
+                  <input className="inp" style={{border:"none",borderRadius:0}} placeholder="my-project" value={form.slug} onChange={e=>setForm({...form,slug:e.target.value})}/>
+                </div>
+              </div>
+              <div className="fi"><label className="lbl">Description</label>
+                <textarea className="ta" placeholder="Shown to participants before voting…" value={form.description} onChange={e=>setForm({...form,description:e.target.value})}/>
+              </div>
+              <div className="fi"><label className="lbl">Voting method</label>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+                  {[{v:"roundrobin",t:"Full Ranking",d:"Every vs every · max 8 · complete list"},{v:"tournament",t:"Quick Prioritization",d:"Bracket · max 20 · top-3 podium"}].map(m=>(
+                    <div key={m.v} onClick={()=>setForm({...form,type:m.v})} style={{padding:12,borderRadius:"var(--r2)",border:`1.5px solid ${form.type===m.v?"var(--f)":"var(--bd)"}`,background:form.type===m.v?"var(--fp)":"var(--sur)",cursor:"pointer",transition:"all .13s"}}>
+                      <div style={{fontWeight:500,fontSize:13,color:form.type===m.v?"var(--f)":"var(--i1)"}}>{m.t}</div>
+                      <div style={{fontSize:11,color:"var(--i3)",marginTop:2}}>{m.d}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <div className="lbl" style={{marginBottom:6}}>Project color</div>
+                <div style={{display:"flex",gap:6}}>
+                  {["#1a3328","#d96b52","#25799B","#3D3580","#2d6a4f","#c07848"].map(c=>(
+                    <div key={c} onClick={()=>setForm({...form,color:c})} style={{width:26,height:26,borderRadius:6,background:c,cursor:"pointer",border:form.color===c?"2px solid var(--i1)":"2px solid transparent"}}/>
+                  ))}
+                  <input type="color" value={form.color} onChange={e=>setForm({...form,color:e.target.value})} style={{width:26,height:26,border:"none",borderRadius:6,cursor:"pointer",padding:0}}/>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {iTab==="options"&&(
+            <div>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+                <span style={{fontSize:12,color:"var(--i3)"}}>{form.options.length} / {MAX}</span>
+                {form.options.length>=MAX&&<span className="badge bga">Max {MAX} reached</span>}
+              </div>
+              {form.options.map(o=>(
+                <div key={o.id} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 12px",background:"var(--sur)",border:"1px solid var(--bd)",borderRadius:"var(--r2)",marginBottom:7}}>
+                  <div className="oth" onClick={()=>imgRefs.current[o.id]?.click()}>
+                    {o.img?<img src={o.img} alt={o.name}/>:<span>{o.emoji||"⭐"}</span>}
+                    <div className="othlbl">📷</div>
+                    <input type="file" accept="image/*" style={{display:"none"}} ref={el=>imgRefs.current[o.id]=el} onChange={e=>handleImg(o.id,e.target.files[0])}/>
+                  </div>
+                  <div style={{flex:1}}>
+                    <div style={{fontWeight:500,fontSize:13}}>{o.name}</div>
+                    {o.desc&&<div style={{fontSize:12,color:"var(--i3)"}}>{o.desc}</div>}
+                  </div>
+                  <button className="btn bg bxs" style={{color:"var(--i4)"}} onClick={()=>setForm(f=>({...f,options:f.options.filter(x=>x.id!==o.id)}))}>✕</button>
+                </div>
+              ))}
+              <p style={{fontSize:11,color:"var(--i4)",marginBottom:10}}>Click thumbnail to upload a photo.</p>
+              {form.options.length<MAX&&(
+                <div style={{background:"var(--sub)",borderRadius:"var(--r2)",padding:12,border:"1px solid var(--bd)",display:"flex",flexDirection:"column",gap:8}}>
+                  <div style={{fontSize:11,fontWeight:500,color:"var(--i3)",textTransform:"uppercase",letterSpacing:".05em"}}>Add option</div>
+                  <div style={{display:"flex",gap:7,alignItems:"center"}}>
+                    <div className="oth" onClick={()=>document.getElementById("noi")?.click()}>
+                      {newOpt.img?<img src={newOpt.img} alt="" style={{width:"100%",height:"100%",objectFit:"cover",borderRadius:"var(--r1)"}}/>:<span>{newOpt.emoji}</span>}
+                      <div className="othlbl">📷</div>
+                      <input id="noi" type="file" accept="image/*" style={{display:"none"}} onChange={e=>handleNewImg(e.target.files[0])}/>
+                    </div>
+                    <input className="inp" style={{width:42}} placeholder="🏆" value={newOpt.emoji} onChange={e=>setNewOpt({...newOpt,emoji:e.target.value})}/>
+                    <input className="inp" placeholder="Option name *" value={newOpt.name} onChange={e=>setNewOpt({...newOpt,name:e.target.value})} style={{flex:1}}/>
+                  </div>
+                  <input className="inp" placeholder="Short description (optional)" value={newOpt.desc} onChange={e=>setNewOpt({...newOpt,desc:e.target.value})}/>
+                  <button className="btn bp bsm" style={{alignSelf:"flex-start"}} onClick={addOpt}>+ Add</button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {iTab==="demographics"&&(
+            <div>
+              <div className="togw" style={{marginBottom:16}} onClick={()=>setForm({...form,demoEnabled:!form.demoEnabled})}>
+                <div className={`tog${form.demoEnabled?" on":""}`}/>
+                <div><div style={{fontSize:13,fontWeight:500}}>Enable demographics screen</div><div style={{fontSize:12,color:"var(--i3)"}}>Shown after voting — all fields optional</div></div>
+              </div>
+              {form.demoEnabled&&(
+                <div>
+                  {form.demographics.map(d=>(
+                    <div key={d.id} style={{display:"flex",alignItems:"center",gap:9,padding:"8px 10px",background:"var(--sur)",border:"1px solid var(--bd)",borderRadius:"var(--r2)",marginBottom:6}}>
+                      <span style={{flex:1,fontSize:13}}>{d.label}</span>
+                      <span className="badge bgy">{d.type}</span>
+                      <button className="btn bg bxs" onClick={()=>setForm(f=>({...f,demographics:f.demographics.filter(x=>x.id!==d.id)}))}>✕</button>
+                    </div>
+                  ))}
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:7,marginTop:8}}>
+                    {[{type:"email",label:"Email Address"},{type:"zipcode",label:"ZIP Code"},{type:"age",label:"Age Range"},{type:"gender",label:"Gender"},{type:"neighborhood",label:"Neighborhood"}].map(d=>(
+                      <button key={d.type} className="btn bo bsm" style={{justifyContent:"flex-start"}} onClick={()=>setForm(f=>({...f,demographics:[...f.demographics,{id:"d"+Date.now(),...d}]}))}>+ {d.label}</button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {iTab==="settings"&&(
+            <div style={{display:"flex",flexDirection:"column",gap:14}}>
+              {[{k:"showResults",t:"Show results after voting",s:"Participants see the ranked results after submitting"},{k:"kioskMode",t:"Kiosk mode",s:"Auto-resets after each submission. For shared iPads at meetings."},{k:"captcha",t:"Require CAPTCHA",s:"Checkbox verification. Recommended for online-only exercises."}].map(s=>(
+                <div key={s.k}>
+                  <div className="togw" onClick={()=>setForm({...form,[s.k]:!form[s.k]})}>
+                    <div className={`tog${form[s.k]?" on":""}`}/>
+                    <div><div style={{fontSize:13,fontWeight:500}}>{s.t}</div><div style={{fontSize:12,color:"var(--i3)",marginTop:2}}>{s.s}</div></div>
+                  </div>
+                  <div className="divider"/>
+                </div>
+              ))}
+            </div>
+          )}
+
+        </div>
+        <div className="mf">
+          <button className="btn bg bsm" onClick={onClose}>Cancel</button>
+          <button className="btn bp bsm" onClick={()=>onSave(form)}>{isNew?"Create project":"Save changes"}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── VOTE PAGE ─────────────────────────────────────────────────────────────────
+function VotePage({vs,setVS,onExit}){
+  const {project,mode,tState,rrPairs,rrIdx,rrVotes,step,demo,lang,capDone,isPreview}=vs;
+  const holdRef=useRef(null);
+  const [exitConfirm,setExitConfirm]=useState(false);
+
+  const progress=mode==="roundrobin"&&rrPairs.length>0?(rrIdx/rrPairs.length)*100:0;
+  const currentPair=mode==="roundrobin"?rrPairs[rrIdx]:tState&&!tDone(tState)?tState.matchups[tState.matchIdx]:null;
+
+  const handleVote=winnerId=>{
+    if(mode==="roundrobin"){
+      const newVotes=[...rrVotes,winnerId];
+      const newIdx=rrIdx+1;
+      if(newIdx<rrPairs.length){
+        setVS({...vs,rrVotes:newVotes,rrIdx:newIdx});
+      } else {
+        const next=project.captcha&&!capDone?"captcha":project.demoEnabled?"demo":project.showResults?"results":"thanks";
+        setVS({...vs,rrVotes:newVotes,step:next});
+      }
+    } else {
+      const newT=tournamentVote(tState,winnerId);
+      if(tDone(newT)){
+        const next=project.captcha&&!capDone?"captcha":project.demoEnabled?"demo":project.showResults?"results":"thanks";
+        setVS({...vs,tState:newT,step:next});
+      } else {
+        setVS({...vs,tState:newT});
+      }
+    }
+  };
+
+  const handleDone=()=>{
+    if(project.kioskMode) setVS({...vs,step:"intro",tState:mode==="tournament"?initTournament(project.options):null,rrIdx:0,rrVotes:[],demo:{},capDone:false});
+    else onExit();
+  };
+
+  const rrResults=calcRR(project.options,rrVotes);
+  const tResults=tState?tTop3(tState):[];
+
+  return (
+    <div className="vpage">
+      {project.kioskMode&&(
+        <div className="kbar">
+          Kiosk Mode — auto-resets after each vote
+          {isPreview&&<button className="btn bxs" style={{background:"rgba(255,255,255,.12)",color:"rgba(255,255,255,.8)",border:"1px solid rgba(255,255,255,.2)",fontSize:10}}
+            onMouseDown={()=>{holdRef.current=setTimeout(()=>setExitConfirm(true),2000);}}
+            onMouseUp={()=>clearTimeout(holdRef.current)}
+            onTouchStart={()=>{holdRef.current=setTimeout(()=>setExitConfirm(true),2000);}}
+            onTouchEnd={()=>clearTimeout(holdRef.current)}>
+            Hold 2s to exit
+          </button>}
+        </div>
+      )}
+
+      {exitConfirm&&(
+        <div className="mov" onClick={()=>setExitConfirm(false)}>
+          <div className="card sli" style={{padding:24,maxWidth:300,textAlign:"center"}} onClick={e=>e.stopPropagation()}>
+            <p style={{fontSize:28,marginBottom:10}}>🔓</p>
+            <h3 style={{fontFamily:"var(--fb)",fontWeight:500,fontSize:15,marginBottom:6}}>Exit kiosk mode?</h3>
+            <p style={{fontSize:13,color:"var(--i3)",marginBottom:18}}>Returns to admin dashboard.</p>
+            <div style={{display:"flex",gap:8,justifyContent:"center"}}>
+              <button className="btn bo bsm" onClick={()=>setExitConfirm(false)}>Cancel</button>
+              <button className="btn bp bsm" onClick={onExit}>Exit</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="vhdr" style={{borderBottom:`2px solid ${project.color}`}}>
+        <div style={{width:34,height:34,borderRadius:"var(--r2)",background:project.color,display:"flex",alignItems:"center",justifyContent:"center",fontSize:15,flexShrink:0}}>🗳</div>
+        <div style={{flex:1}}><div style={{fontSize:14,fontWeight:500}}>{project.name}</div><div style={{fontSize:11,color:"var(--i3)"}}>{project.type==="roundrobin"?"Full Ranking":"Quick Prioritization"}</div></div>
+        <LangPicker lang={lang} setLang={l=>setVS({...vs,lang:l})}/>
+        {!project.kioskMode&&<button className="btn bg bsm" onClick={onExit} style={{marginLeft:6}}>✕</button>}
+      </div>
+
+      <div className="vbody">
+        {step==="intro"&&<VoteIntro project={project} pairCount={mode==="roundrobin"?rrPairs.length:tState?.matchups?.length||0} onStart={()=>setVS({...vs,step:"voting"})}/>}
+        {step==="voting"&&currentPair&&<VoteStep project={project} pair={currentPair} progress={progress} onVote={handleVote}/>}
+        {step==="voting"&&!currentPair&&<div style={{textAlign:"center",padding:32,color:"var(--i3)"}}>Loading…</div>}
+        {step==="captcha"&&<CaptchaStep onPass={()=>setVS({...vs,capDone:true,step:project.demoEnabled?"demo":project.showResults?"results":"thanks"})}/>}
+        {step==="demo"&&<DemoStep project={project} demo={demo} setDemo={d=>setVS({...vs,demo:d})} onNext={()=>setVS({...vs,step:project.showResults?"results":"thanks"})}/>}
+        {step==="results"&&<ResultsStep project={project} results={mode==="roundrobin"?rrResults:tResults} mode={mode} onDone={handleDone}/>}
+        {step==="thanks"&&<ThanksStep kioskMode={project.kioskMode} onDone={handleDone}/>}
+      </div>
+    </div>
+  );
+}
+
+function VoteIntro({project,pairCount,onStart}){
+  return (
+    <div className="fai" style={{textAlign:"center",paddingTop:28}}>
+      <div style={{fontSize:52,marginBottom:12}}>🗳</div>
+      <h2 style={{fontSize:"clamp(20px,4vw,26px)",marginBottom:8,fontWeight:300}}>{project.name}</h2>
+      <p style={{color:"var(--i3)",fontSize:14,lineHeight:1.6,maxWidth:440,margin:"0 auto 14px"}}>{project.description}</p>
+      <div style={{display:"flex",gap:8,justifyContent:"center",margin:"14px 0 22px",flexWrap:"wrap"}}>
+        <div className="chip">{pairCount} comparisons</div>
+        <div className="chip">{project.type==="roundrobin"?"Full Ranking":"Quick Prioritization"}</div>
+        <div className="chip">~{Math.max(1,Math.ceil(pairCount*0.25))} min</div>
+      </div>
+      <p style={{fontSize:12,color:"var(--i3)",maxWidth:340,margin:"0 auto 24px",lineHeight:1.6}}>Your responses are anonymous.</p>
+      <button className="btn blg" style={{background:project.color,color:"white"}} onClick={onStart}>Start voting →</button>
+    </div>
+  );
+}
+
+function VoteStep({project,pair,progress,onVote}){
+  const [sel,setSel]=useState(null);
+  const [a,b]=pair;
+  const pick=opt=>{setSel(opt.id);setTimeout(()=>{onVote(opt.id);setSel(null);},260);};
+  return (
+    <div className="fai">
+      {progress>0&&<div className="vpb"><div className="vpf" style={{width:`${progress}%`,background:project.color}}/></div>}
+      <div className="vq">Which matters more to you?</div>
+      <div className="vgrid">
+        <div className={`vc${sel===a.id?" sel":""}`} onClick={()=>pick(a)} style={sel===a.id?{borderColor:project.color}:{}}>
+          {a.img?<img src={a.img} alt={a.name} className="vcimg"/>:<div style={{fontSize:40}}>{a.emoji}</div>}
+          <div className="vcn">{a.name}</div>
+          {a.desc&&<div className="vcd">{a.desc}</div>}
+        </div>
+        <div className="vschip">VS</div>
+        <div className={`vc${sel===b.id?" sel":""}`} onClick={()=>pick(b)} style={sel===b.id?{borderColor:project.color}:{}}>
+          {b.img?<img src={b.img} alt={b.name} className="vcimg"/>:<div style={{fontSize:40}}>{b.emoji}</div>}
+          <div className="vcn">{b.name}</div>
+          {b.desc&&<div className="vcd">{b.desc}</div>}
+        </div>
+      </div>
+      <p style={{textAlign:"center",fontSize:11,color:"var(--i4)",marginTop:18}}>Your response is anonymous.</p>
+    </div>
+  );
+}
+
+function CaptchaStep({onPass}){
+  const [checked,setChecked]=useState(false);
+  return (
+    <div className="fai" style={{paddingTop:32}}>
+      <div style={{textAlign:"center",marginBottom:20}}>
+        <h2 style={{fontSize:20,marginBottom:5,fontWeight:300}}>One quick check</h2>
+        <p style={{color:"var(--i3)",fontSize:13}}>Please confirm you are a real person.</p>
+      </div>
+      <div style={{border:"1px solid var(--bd)",borderRadius:"var(--r2)",padding:"14px 16px",display:"flex",alignItems:"center",gap:12,background:"var(--sub)",margin:"14px 0"}}>
+        <div onClick={()=>setChecked(c=>!c)} style={{width:22,height:22,borderRadius:"var(--r1)",border:`1.5px solid ${checked?"var(--gn)":"var(--bdm)"}`,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",background:checked?"var(--gn)":"var(--sur)",flexShrink:0,transition:"all .14s"}}>
+          {checked&&<span style={{color:"white",fontSize:12,fontWeight:700}}>✓</span>}
+        </div>
+        <div style={{fontSize:13,fontWeight:500}}>I am not a robot</div>
+      </div>
+      <button className="btn bp blg" style={{width:"100%",justifyContent:"center"}} disabled={!checked} onClick={onPass}>Continue →</button>
+    </div>
+  );
+}
+
+function DemoStep({project,demo,setDemo,onNext}){
+  return (
+    <div className="fai">
+      <div style={{textAlign:"center",marginBottom:20}}>
+        <h2 style={{fontSize:20,marginBottom:4,fontWeight:300}}>A few quick questions</h2>
+        <p style={{color:"var(--i3)",fontSize:13}}>All fields are optional.</p>
+      </div>
+      <div style={{display:"flex",flexDirection:"column",gap:12}}>
+        {project.demographics.map(d=>(
+          <div key={d.id} className="fi">
+            <label className="lbl">{d.label}</label>
+            {d.type==="age"?(
+              <select className="sel" value={demo[d.id]||""} onChange={e=>setDemo({...demo,[d.id]:e.target.value})}>
+                <option value="">Prefer not to say</option>
+                {["Under 18","18–24","25–34","35–44","45–54","55–64","65+"].map(a=><option key={a}>{a}</option>)}
+              </select>
+            ):(
+              <input className="inp" type={d.type==="email"?"email":"text"} placeholder={d.type==="zipcode"?"e.g. 97201":""} value={demo[d.id]||""} onChange={e=>setDemo({...demo,[d.id]:e.target.value})}/>
+            )}
+          </div>
+        ))}
+      </div>
+      <button className="btn bp blg" style={{width:"100%",justifyContent:"center",marginTop:20}} onClick={onNext}>Submit</button>
+      <button className="btn bg bsm" style={{width:"100%",justifyContent:"center",marginTop:6,color:"var(--i3)"}} onClick={onNext}>Skip</button>
+    </div>
+  );
+}
+
+function ResultsStep({project,results,mode,onDone}){
+  const medals=["🥇","🥈","🥉"];
+  const maxScore=results[0]?.score||1;
+  const total=results.reduce((a,r)=>a+r.score,0);
+  const showFull=mode==="roundrobin";
+  return (
+    <div className="fai">
+      <div style={{textAlign:"center",marginBottom:20}}>
+        <div style={{fontSize:38,marginBottom:6}}>🎉</div>
+        <h2 style={{fontSize:20,marginBottom:3,fontWeight:300}}>Community Results</h2>
+        <p style={{color:"var(--i3)",fontSize:13}}>{mode==="roundrobin"?"Ranked by community votes — full list":"Top 3 from bracket play"}</p>
+      </div>
+      {results.length>=3&&(
+        <div className="podium">
+          <div className="pcol"><span style={{fontSize:22}}>🥈</span><div className="pbar psi">2</div><div className="pname">{results[1]?.name}</div></div>
+          <div className="pcol"><span style={{fontSize:30}}>🥇</span><div className="pbar pg">1</div><div className="pname" style={{fontWeight:600}}>{results[0]?.name}</div></div>
+          <div className="pcol"><span style={{fontSize:18}}>🥉</span><div className="pbar pb2">3</div><div className="pname">{results[2]?.name}</div></div>
+        </div>
+      )}
+      {showFull&&(
+        <div style={{marginBottom:20}}>
+          {results.map((r,i)=>(
+            <div key={r.id} className="rrow">
+              <div className="rrnk" style={i<3?{background:["#fef3c7","#f1f5f9","#fde8d8"][i],color:["#92400e","#374151","#78350f"][i]}:{}}>{i<3?medals[i]:i+1}</div>
+              <div style={{flex:1}}>
+                <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}><span style={{fontSize:13,fontWeight:500}}>{r.emoji} {r.name}</span><span style={{fontSize:12,color:"var(--i3)"}}>{total>0?Math.round((r.score/total)*100):0}%</span></div>
+                <div className="rbar"><div className="rfill" style={{width:`${(r.score/maxScore)*100}%`,background:project.color}}/></div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+      <button className="btn bo bmd" style={{width:"100%",justifyContent:"center"}} onClick={onDone}>Done</button>
+    </div>
+  );
+}
+
+function ThanksStep({kioskMode,onDone}){
+  useEffect(()=>{if(kioskMode){const t=setTimeout(onDone,5000);return()=>clearTimeout(t);}},[kioskMode]);
+  return (
+    <div className="fai" style={{textAlign:"center",paddingTop:48}}>
+      <div style={{fontSize:60,marginBottom:12}}>✓</div>
+      <h2 style={{fontSize:24,marginBottom:8,fontWeight:300}}>Thank you!</h2>
+      <p style={{color:"var(--i3)",fontSize:14,maxWidth:360,margin:"0 auto 28px",lineHeight:1.6}}>Your priorities have been recorded. Results will help shape future planning decisions.</p>
+      {kioskMode?<p style={{fontSize:13,color:"var(--i4)"}}>Resetting in 5 seconds…</p>:<button className="btn bp blg" onClick={onDone}>Done</button>}
+    </div>
+  );
+}
