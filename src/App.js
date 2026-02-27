@@ -696,9 +696,10 @@ function ExportPage({project,projects,onBack}){
   const [orgName,setOrgName]=useState("Riverside Consulting Group");
   const [rawData,setRawData]=useState(()=>genRaw(project));
   const [selected,setSelected]=useState(new Set());
+  const [reportColor,setReportColor]=useState(project.color);
 
   const p=projects.find(x=>x.id===selId)||project;
-  useEffect(()=>{setRawData(genRaw(p));setSelected(new Set());},[selId,p]);
+  useEffect(()=>{setRawData(genRaw(p));setSelected(new Set());setReportColor(p.color);},[selId,p]);
 
   const results=[...p.options].map(o=>({...o,score:p.mockScores[o.id]||0})).sort((a,b)=>b.score-a.score);
   const maxScore=results[0]?.score||1;
@@ -728,11 +729,12 @@ function ExportPage({project,projects,onBack}){
           </div>
           <div className="fi"><label className="lbl">Org name</label><input className="inp" value={orgName} onChange={e=>setOrgName(e.target.value)}/></div>
           <div>
-            <div className="lbl" style={{marginBottom:6}}>Accent color</div>
-            <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-              {["#1a3328","#d96b52","#25799B","#3D3580","#2d6a4f"].map(c=>(
-                <div key={c} style={{width:26,height:26,borderRadius:6,background:c,cursor:"pointer",border:p.color===c?"2px solid var(--i1)":"2px solid transparent"}}/>
+            <div className="lbl" style={{marginBottom:6}}>Report color</div>
+            <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}}>
+              {["#1a3328","#d96b52","#25799B","#3D3580","#2d6a4f","#c07848"].map(c=>(
+                <div key={c} onClick={()=>setReportColor(c)} style={{width:26,height:26,borderRadius:6,background:c,cursor:"pointer",border:reportColor===c?"3px solid var(--i1)":"2px solid transparent",transition:"all .13s"}}/>
               ))}
+              <input type="color" value={reportColor} onChange={e=>setReportColor(e.target.value)} style={{width:26,height:26,border:"none",borderRadius:6,cursor:"pointer",padding:0}} title="Custom color"/>
             </div>
           </div>
           <div className="divider"/>
@@ -746,7 +748,7 @@ function ExportPage({project,projects,onBack}){
 
             {rTab==="summary"&&(
               <div>
-                <div className="rephdr" style={{background:p.color}}>
+                <div className="rephdr" style={{background:reportColor}}>
                   <h2 style={{fontFamily:"var(--fd)",fontSize:22,fontWeight:300,marginBottom:4}}>{p.name}</h2>
                   <div style={{fontSize:13,opacity:.7}}>{orgName}</div>
                   <div style={{fontSize:12,opacity:.55,marginTop:3}}>{p.type==="roundrobin"?"Full Ranking":"Quick Prioritization"} · {p.options.length} options · {p.responses} responses</div>
@@ -770,7 +772,7 @@ function ExportPage({project,projects,onBack}){
                       <div className="rrnk" style={i<3?{background:["#fef3c7","#f1f5f9","#fde8d8"][i],color:["#92400e","#374151","#78350f"][i]}:{}}>{i<3?medals[i]:i+1}</div>
                       <div style={{flex:1}}>
                         <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}><span style={{fontSize:13,fontWeight:500}}>{r.emoji} {r.name}</span><span style={{fontSize:12,color:"var(--i3)"}}>{total>0?Math.round((r.score/total)*100):0}%</span></div>
-                        <div className="rbar"><div className="rfill" style={{width:`${(r.score/maxScore)*100}%`,background:p.color}}/></div>
+                        <div className="rbar"><div className="rfill" style={{width:`${(r.score/maxScore)*100}%`,background:reportColor}}/></div>
                       </div>
                       <div style={{fontSize:12,fontWeight:600,color:"var(--i3)",width:36,textAlign:"right"}}>{r.score}</div>
                     </div>
@@ -837,7 +839,7 @@ function ProjectModal({project,onSave,onClose}){
   const isNew=!project;
   const [form,setForm]=useState(project||{name:"",slug:"",type:"roundrobin",status:"draft",color:"#1a3328",accent:"#d96b52",description:"",demoEnabled:false,showResults:true,kioskMode:false,captcha:false,options:[{id:"o1",name:"Option A",desc:"",emoji:"⭐",img:null},{id:"o2",name:"Option B",desc:"",emoji:"⭐",img:null}],demographics:[],mockScores:{}});
   const [iTab,setITab]=useState("basics");
-  const [newOpt,setNewOpt]=useState({name:"",desc:"",emoji:"🏆",img:null});
+  const [newOpt,setNewOpt]=useState({name:"",desc:"",img:null});
   const imgRefs=useRef({});
   const MAX=form.type==="roundrobin"?8:20;
 
@@ -856,7 +858,7 @@ function ProjectModal({project,onSave,onClose}){
   const addOpt=()=>{
     if(!newOpt.name.trim()||form.options.length>=MAX)return;
     setForm(f=>({...f,options:[...f.options,{id:"o"+Date.now(),...newOpt}]}));
-    setNewOpt({name:"",desc:"",emoji:"🏆",img:null});
+    setNewOpt({name:"",desc:"",img:null});
   };
 
   return (
@@ -936,12 +938,11 @@ function ProjectModal({project,onSave,onClose}){
                 <div style={{background:"var(--sub)",borderRadius:"var(--r2)",padding:12,border:"1px solid var(--bd)",display:"flex",flexDirection:"column",gap:8}}>
                   <div style={{fontSize:11,fontWeight:500,color:"var(--i3)",textTransform:"uppercase",letterSpacing:".05em"}}>Add option</div>
                   <div style={{display:"flex",gap:7,alignItems:"center"}}>
-                    <label htmlFor="noi" className="oth" style={{cursor:"pointer"}} aria-label="Upload image for new option">
-                      {newOpt.img?<img src={newOpt.img} alt="" style={{width:"100%",height:"100%",objectFit:"cover",borderRadius:"var(--r1)"}}/>:<span>{newOpt.emoji}</span>}
+                    <label htmlFor="noi" className="oth" style={{cursor:"pointer",flexShrink:0}} aria-label="Upload image for new option">
+                      {newOpt.img?<img src={newOpt.img} alt="" style={{width:"100%",height:"100%",objectFit:"cover",borderRadius:"var(--r1)"}}/>:<span style={{fontSize:18,opacity:.3}}>📷</span>}
                       <div className="othlbl">📷</div>
                       <input id="noi" type="file" accept="image/*" style={{display:"none"}} onChange={e=>handleNewImg(e.target.files[0])}/>
                     </label>
-                    <input className="inp" style={{width:42}} placeholder="🏆" value={newOpt.emoji} onChange={e=>setNewOpt({...newOpt,emoji:e.target.value})}/>
                     <input className="inp" placeholder="Option name *" value={newOpt.name} onChange={e=>setNewOpt({...newOpt,name:e.target.value})} style={{flex:1}}/>
                   </div>
                   <input className="inp" placeholder="Short description (optional)" value={newOpt.desc} onChange={e=>setNewOpt({...newOpt,desc:e.target.value})}/>
@@ -1114,13 +1115,13 @@ function VoteStep({project,pair,progress,onVote}){
       <div className="vq">Which matters more to you?</div>
       <div className="vgrid">
         <div className={`vc${sel===a.id?" sel":""}`} onClick={()=>pick(a)} role="button" aria-label={`Vote for ${a.name}`} tabIndex={0} onKeyDown={e=>e.key==="Enter"&&pick(a)} style={sel===a.id?{borderColor:project.color}:{}}>
-          {a.img?<img src={a.img} alt={a.altText||a.name} className="vcimg"/>:<div style={{fontSize:40}}>{a.emoji}</div>}
+          {a.img?<img src={a.img} alt={a.altText||a.name} className="vcimg"/>:<div style={{fontSize:40,opacity:.25}}>📷</div>}
           <div className="vcn">{a.name}</div>
           {a.desc&&<div className="vcd">{a.desc}</div>}
         </div>
         <div className="vschip">VS</div>
         <div className={`vc${sel===b.id?" sel":""}`} onClick={()=>pick(b)} role="button" aria-label={`Vote for ${b.name}`} tabIndex={0} onKeyDown={e=>e.key==="Enter"&&pick(b)} style={sel===b.id?{borderColor:project.color}:{}}>
-          {b.img?<img src={b.img} alt={b.altText||b.name} className="vcimg"/>:<div style={{fontSize:40}}>{b.emoji}</div>}
+          {b.img?<img src={b.img} alt={b.altText||b.name} className="vcimg"/>:<div style={{fontSize:40,opacity:.25}}>📷</div>}
           <div className="vcn">{b.name}</div>
           {b.desc&&<div className="vcd">{b.desc}</div>}
         </div>
