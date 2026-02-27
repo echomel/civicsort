@@ -4,8 +4,8 @@ import { useState, useEffect, useRef } from "react";
 const SEED = [
   {
     id:"p1", name:"Riverside Aquatic Center", slug:"riverside-aquatic",
-    type:"tournament", status:"active", color:"#1a3328", accent:"#d96b52",
-    responses:142, created:"2024-10-12",
+    type:"tournament", status:"active", color:"#1B2A4A", accent:"#d96b52",
+    responses:142, created:"2024-10-12", isTemplate:true,
     description:"Help us prioritize features for the new aquatic center.",
     demoEnabled:true, showResults:true, kioskMode:false, captcha:false,
     options:[
@@ -24,7 +24,7 @@ const SEED = [
   {
     id:"p2", name:"Maplewood Library Programs", slug:"maplewood-library",
     type:"roundrobin", status:"active", color:"#d96b52", accent:"#1a3328",
-    responses:89, created:"2024-11-01",
+    responses:89, created:"2024-11-01", isTemplate:true,
     description:"Which library programs should we expand next year?",
     demoEnabled:false, showResults:true, kioskMode:true, captcha:false,
     options:[
@@ -114,7 +114,7 @@ const CSS = `
 @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;1,9..144,300&family=Inter:wght@300;400;500;600&display=swap');
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 :root{
-  --f:#1a3328;--fm:#254a3a;--fp:rgba(26,51,40,.06);
+  --f:#1B2A4A;--fm:#243660;--fp:rgba(27,42,74,.06);
   --c:#d96b52;--ch:#c45c44;
   --bg:#f2f3f5;--sur:#fff;--sub:#f7f8fa;--ins:#e8eaed;
   --bd:#e2e4e8;--bdm:#c8ccd4;
@@ -374,7 +374,7 @@ export default function App(){
       <style>{CSS}</style>
       {view==="landing" && <Landing onLogin={()=>setView("login")} onDash={()=>setView("dashboard")} onDemo={()=>launchVote(SEED[0])} superOpen={superOpen} setSuperOpen={setSuperOpen}/>}
       {view==="login"   && <Login onLogin={()=>setView("dashboard")} onBack={()=>setView("landing")}/>}
-      {view==="dashboard" && <Dashboard tab={tab} setTab={setTab} projects={projects} onBack={()=>setView("landing")} onVote={launchVote} onResults={p=>{setExportP(p);setView("export");}} onNew={()=>{setEditP(null);setShowModal(true);}} onEdit={p=>{setEditP(p);setShowModal(true);}} onDelete={id=>{setProjects(ps=>ps.filter(p=>p.id!==id));notify("Deleted");}}/>}
+      {view==="dashboard" && <Dashboard tab={tab} setTab={setTab} projects={projects} onBack={()=>setView("landing")} onVote={launchVote} onResults={p=>{setExportP(p);setView("export");}} onNew={()=>{setEditP(null);setShowModal(true);}} onEdit={p=>{setEditP(p);setShowModal(true);}} onDelete={id=>setConfirmDel(id)}/>}
       {view==="voting"  && vs && <VotePage vs={vs} setVS={setVS} onExit={()=>setView("dashboard")}/>}
       {view==="export"  && exportP && <ExportPage project={exportP} projects={projects} onBack={()=>setView("dashboard")}/>}
       {showModal && <ProjectModal project={editP} onSave={saveProject} onClose={()=>{setShowModal(false);setEditP(null);}}/>}
@@ -416,13 +416,11 @@ function Landing({onLogin,onDash,onDemo,superOpen,setSuperOpen}){
         </div>
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(320px,1fr))",gap:20}}>
           <div className="card" style={{padding:32,borderTop:`3px solid ${`var(--c)`}`}}>
-            <div style={{fontSize:32,marginBottom:16}}>⚡</div>
             <h3 style={{fontSize:18,fontWeight:400,marginBottom:10,letterSpacing:"-.01em"}}>Bracket Mode</h3>
             <p style={{color:"var(--i2)",fontSize:14,lineHeight:1.7,marginBottom:16}}>Head-to-head comparisons in a tournament format. Quickly narrow up to 20 options down to the highest priorities.</p>
             <p style={{fontSize:13,color:"var(--c)",fontWeight:500}}>Best when you need energy, speed, and a clear short list.</p>
           </div>
           <div className="card" style={{padding:32,borderTop:`3px solid ${`var(--f)`}`}}>
-            <div style={{fontSize:32,marginBottom:16}}>🔄</div>
             <h3 style={{fontSize:18,fontWeight:400,marginBottom:10,letterSpacing:"-.01em"}}>Ranking Mode</h3>
             <p style={{color:"var(--i2)",fontSize:14,lineHeight:1.7,marginBottom:16}}>Every option compared against every other. Generate a complete ranked list when sequencing and trade-offs matter.</p>
             <p style={{fontSize:13,color:"var(--f)",fontWeight:500}}>Best when you need depth and defensible ordering.</p>
@@ -439,13 +437,13 @@ function Landing({onLogin,onDash,onDemo,superOpen,setSuperOpen}){
           </div>
           <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))",gap:16}}>
             {[
-              {i:"📟",t:"Kiosk-ready",d:"Auto-resets for shared devices at events and open houses."},
-              {i:"🌐",t:"Multilingual by default",d:"Voters choose their language. AI translates option names instantly."},
-              {i:"🖼️",t:"Visual comparison",d:"Upload images per option to support photo-based decision making."},
-              {i:"📊",t:"Branded results report",d:"Download a clean, presentation-ready report with your logo and colors."},
+              {i:"01",t:"Kiosk-ready",d:"Auto-resets for shared devices at events and open houses."},
+              {i:"02",t:"Multilingual by default",d:"Voters choose their language. AI translates option names instantly."},
+              {i:"03",t:"Visual comparison",d:"Upload images per option to support photo-based decision making."},
+              {i:"04",t:"Branded results report",d:"Download a clean, presentation-ready report with your logo and colors."},
             ].map(f=>(
               <div key={f.t} className="card" style={{padding:22}}>
-                <div style={{fontSize:24,marginBottom:10}}>{f.i}</div>
+                <div style={{fontSize:11,fontWeight:700,letterSpacing:".06em",color:"var(--c)",marginBottom:10,textTransform:"uppercase"}}>{f.i}</div>
                 <h3 style={{fontSize:13,fontWeight:600,marginBottom:5,fontFamily:"var(--fb)"}}>{f.t}</h3>
                 <p style={{color:"var(--i3)",fontSize:13,lineHeight:1.6}}>{f.d}</p>
               </div>
@@ -614,6 +612,7 @@ function Login({onLogin,onBack}){
 
 // ── DASHBOARD ─────────────────────────────────────────────────────────────────
 function Dashboard({tab,setTab,projects,onBack,onVote,onResults,onNew,onEdit,onDelete}){
+  const [confirmDel,setConfirmDel]=useState(null);
   const items=[{id:"projects",lbl:"Projects"},{id:"analytics",lbl:"Analytics"},{id:"account",lbl:"Account"}];
   return (
     <div>
@@ -630,7 +629,20 @@ function Dashboard({tab,setTab,projects,onBack,onVote,onResults,onNew,onEdit,onD
           {items.map(i=><button key={i.id} className={`sbit${tab===i.id?" on":""}`} onClick={()=>setTab(i.id)}>{i.lbl}</button>)}
         </aside>
         <main className="main">
-          {tab==="projects"  && <ProjectsView projects={projects} onNew={onNew} onVote={onVote} onResults={onResults} onEdit={onEdit} onDelete={onDelete}/>}
+          {confirmDel&&(
+        <div className="mov" onClick={()=>setConfirmDel(null)}>
+          <div className="card sli" style={{padding:28,maxWidth:360,textAlign:"center"}} onClick={e=>e.stopPropagation()}>
+            <div style={{fontSize:36,marginBottom:10}}>🗑</div>
+            <h3 style={{fontFamily:"var(--fb)",fontWeight:500,fontSize:15,marginBottom:6}}>Delete this project?</h3>
+            <p style={{fontSize:13,color:"var(--i3)",marginBottom:20,lineHeight:1.6}}>This cannot be undone. All responses and settings will be lost.</p>
+            <div style={{display:"flex",gap:8,justifyContent:"center"}}>
+              <button className="btn bo bsm" onClick={()=>setConfirmDel(null)}>Cancel</button>
+              <button className="btn bdr bsm" onClick={()=>{setProjects(ps=>ps.filter(p=>p.id!==confirmDel));setConfirmDel(null);}}>Delete</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {tab==="projects"  && <ProjectsView projects={projects} onNew={onNew} onVote={onVote} onResults={onResults} onEdit={onEdit} onDelete={onDelete} onDuplicate={p=>{setProjects(ps=>[{...p,id:"p"+Date.now(),name:p.name+" (copy)",status:"draft",responses:0,created:new Date().toISOString().split("T")[0]},...ps]);}}/>}
           {tab==="analytics" && <AnalyticsView projects={projects}/>}
           {tab==="account"   && <AccountView/>}
         </main>
@@ -639,7 +651,7 @@ function Dashboard({tab,setTab,projects,onBack,onVote,onResults,onNew,onEdit,onD
   );
 }
 
-function ProjectsView({projects,onNew,onVote,onResults,onEdit,onDelete}){
+function ProjectsView({projects,onNew,onVote,onResults,onEdit,onDelete,onDuplicate}){
   return (
     <div className="fai">
       <div className="ph">
@@ -652,7 +664,7 @@ function ProjectsView({projects,onNew,onVote,onResults,onEdit,onDelete}){
             <div style={{height:3,borderRadius:99,background:p.color,marginBottom:16}}/>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,marginBottom:6}}>
               <h3 style={{fontSize:14,fontWeight:500,fontFamily:"var(--fb)"}}>{p.name}</h3>
-              <span className={`badge ${p.status==="active"?"bgg":"bgy"}`}>{p.status}</span>
+<>{p.isTemplate&&<span className="badge bga" style={{marginRight:4}}>Template</span>}<span className={`badge ${p.status==="active"?"bgg":p.status==="closed"?"bdr":"bgy"}`}>{p.status}</span></>
             </div>
             <p style={{fontSize:12,color:"var(--i3)",lineHeight:1.5,marginBottom:12}}>{p.description}</p>
             <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:12}}>
@@ -771,7 +783,7 @@ function ExportPage({project,projects,onBack}){
             <div className="lbl" style={{marginBottom:6}}>Report color</div>
             <div style={{display:"flex",alignItems:"center",gap:8}}>
               <input type="color" value={reportColor} onChange={e=>setReportColor(e.target.value)} style={{width:36,height:36,border:"1px solid var(--bd)",borderRadius:"var(--r1)",cursor:"pointer",padding:2,background:"var(--sur)"}}/>
-              <input className="inp" value={reportColor} onChange={e=>/^#[0-9A-Fa-f]{0,6}$/.test(e.target.value)&&setReportColor(e.target.value)} style={{fontFamily:"monospace",fontSize:13,width:96}} maxLength={7} placeholder="#1a3328"/>
+              <input className="inp" value={reportColor} onChange={e=>/^#[0-9A-Fa-f]{0,6}$/.test(e.target.value)&&setReportColor(e.target.value)} style={{fontFamily:"monospace",fontSize:13,width:96}} maxLength={7} placeholder="#1B2A4A"/>
               <div style={{width:28,height:28,borderRadius:"var(--r1)",background:reportColor,border:"1px solid var(--bd)",flexShrink:0}}/>
             </div>
           </div>
@@ -877,9 +889,10 @@ function genRaw(project){
 // ── PROJECT MODAL ─────────────────────────────────────────────────────────────
 function ProjectModal({project,onSave,onClose}){
   const isNew=!project;
-  const [form,setForm]=useState(project||{name:"",slug:"",type:"roundrobin",status:"draft",color:"#1a3328",accent:"#d96b52",description:"",demoEnabled:false,showResults:true,kioskMode:false,captcha:false,logo:null,options:[{id:"o1",name:"Option A",desc:"",img:null},{id:"o2",name:"Option B",desc:"",img:null}],demographics:[],mockScores:{}});
+  const [form,setForm]=useState(project||{name:"",slug:"",type:"roundrobin",status:"draft",color:"#1B2A4A",accent:"#d96b52",description:"",demoEnabled:false,showResults:true,kioskMode:false,captcha:false,logo:null,options:[{id:"o1",name:"Option A",desc:"",img:null},{id:"o2",name:"Option B",desc:"",img:null}],demographics:[],mockScores:{}});
   const [iTab,setITab]=useState("basics");
   const [newOpt,setNewOpt]=useState({name:"",desc:"",img:null});
+  const [dragIdx,setDragIdx]=useState(null);
   const handleLogo=file=>{
     if(!file)return;
     const r=new FileReader();
@@ -961,7 +974,7 @@ function ProjectModal({project,onSave,onClose}){
                 <div className="lbl" style={{marginBottom:6}}>Project color</div>
                 <div style={{display:"flex",alignItems:"center",gap:8}}>
                   <input type="color" value={form.color} onChange={e=>setForm({...form,color:e.target.value})} style={{width:36,height:36,border:"1px solid var(--bd)",borderRadius:"var(--r1)",cursor:"pointer",padding:2,background:"var(--sur)"}}/>
-                  <input className="inp" value={form.color} onChange={e=>/^#[0-9A-Fa-f]{0,6}$/.test(e.target.value)&&setForm({...form,color:e.target.value})} style={{fontFamily:"monospace",fontSize:13,width:96}} maxLength={7} placeholder="#1a3328"/>
+                  <input className="inp" value={form.color} onChange={e=>/^#[0-9A-Fa-f]{0,6}$/.test(e.target.value)&&setForm({...form,color:e.target.value})} style={{fontFamily:"monospace",fontSize:13,width:96}} maxLength={7} placeholder="#1B2A4A"/>
                   <div style={{width:28,height:28,borderRadius:"var(--r1)",background:form.color,border:"1px solid var(--bd)",flexShrink:0}}/>
                 </div>
               </div>
@@ -974,9 +987,10 @@ function ProjectModal({project,onSave,onClose}){
                 <span style={{fontSize:12,color:"var(--i3)"}}>{form.options.length} / {MAX}</span>
                 {form.options.length>=MAX&&<span className="badge bga">Max {MAX} reached</span>}
               </div>
-              {form.options.map(o=>(
-                <div key={o.id} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 12px",background:"var(--sur)",border:"1px solid var(--bd)",borderRadius:"var(--r2)",marginBottom:7}}>
-                  <label htmlFor={`img-${o.id}`} className="oth" style={{cursor:"pointer"}} aria-label={`Upload image for ${o.name}`}>
+              {form.options.map((o,oi)=>(
+                <div key={o.id} draggable onDragStart={()=>setDragIdx(oi)} onDragOver={e=>e.preventDefault()} onDrop={()=>{if(dragIdx===null||dragIdx===oi)return;const opts=[...form.options];const[moved]=opts.splice(dragIdx,1);opts.splice(oi,0,moved);setForm(f=>({...f,options:opts}));setDragIdx(null);}} style={{display:"flex",alignItems:"flex-start",gap:8,padding:"10px 12px",background:dragIdx===oi?"var(--fp)":"var(--sur)",border:`1.5px solid ${dragIdx===oi?"var(--f)":"var(--bd)"}`,borderRadius:"var(--r2)",marginBottom:7,transition:"all .13s"}}>
+                  <div style={{color:"var(--i4)",fontSize:16,cursor:"grab",paddingTop:10,flexShrink:0}} title="Drag to reorder">⠿</div>
+                  <label htmlFor={`img-${o.id}`} className="oth" style={{cursor:"pointer",flexShrink:0}} aria-label={`Upload image for ${o.name}`} title="Click to upload image">
                     {o.img?<img src={o.img} alt={o.altText||o.name} style={{width:"100%",height:"100%",objectFit:"cover"}}/>:<span style={{fontSize:18,opacity:.25}}>📷</span>}
                     <div className="othlbl">📷</div>
                     <input id={`img-${o.id}`} type="file" accept="image/*" style={{display:"none"}} onChange={e=>handleImg(o.id,e.target.files[0])}/>
@@ -984,7 +998,7 @@ function ProjectModal({project,onSave,onClose}){
                   <div style={{flex:1}}>
                     <div style={{fontWeight:500,fontSize:13}}>{o.name}</div>
                     {o.desc&&<div style={{fontSize:12,color:"var(--i3)"}}>{o.desc}</div>}
-                    {o.img&&<input className="inp" style={{fontSize:11,padding:"4px 8px",marginTop:3}} placeholder="Alt text for screen readers (required for accessibility)" value={o.altText||""} onChange={e=>setForm(f=>({...f,options:f.options.map(x=>x.id===o.id?{...x,altText:e.target.value}:x)}))} aria-label="Image alt text"/>}
+                    {o.img&&<input className="inp" style={{fontSize:11,padding:"4px 8px",marginTop:3}} placeholder="Alt text for screen readers" value={o.altText||""} onChange={e=>setForm(f=>({...f,options:f.options.map(x=>x.id===o.id?{...x,altText:e.target.value}:x)}))} aria-label="Image alt text"/>}
                   </div>
                   <button className="btn bg bxs" style={{color:"var(--i4)"}} aria-label={`Remove ${o.name}`} onClick={()=>setForm(f=>({...f,options:f.options.filter(x=>x.id!==o.id)}))}>✕</button>
                 </div>
@@ -1050,7 +1064,7 @@ function ProjectModal({project,onSave,onClose}){
                 <div className="lbl" style={{marginBottom:6}}>Project color</div>
                 <div style={{display:"flex",alignItems:"center",gap:8}}>
                   <input type="color" value={form.color} onChange={e=>setForm({...form,color:e.target.value})} style={{width:36,height:36,border:"1px solid var(--bd)",borderRadius:"var(--r1)",cursor:"pointer",padding:2,background:"var(--sur)"}}/>
-                  <input className="inp" value={form.color} onChange={e=>/^#[0-9A-Fa-f]{0,6}$/.test(e.target.value)&&setForm({...form,color:e.target.value})} style={{fontFamily:"monospace",fontSize:13,width:96}} maxLength={7} placeholder="#1a3328"/>
+                  <input className="inp" value={form.color} onChange={e=>/^#[0-9A-Fa-f]{0,6}$/.test(e.target.value)&&setForm({...form,color:e.target.value})} style={{fontFamily:"monospace",fontSize:13,width:96}} maxLength={7} placeholder="#1B2A4A"/>
                   <div style={{width:28,height:28,borderRadius:"var(--r1)",background:form.color,border:"1px solid var(--bd)",flexShrink:0}}/>
                 </div>
               </div>
@@ -1059,7 +1073,7 @@ function ProjectModal({project,onSave,onClose}){
 
           {iTab==="settings"&&(
             <div style={{display:"flex",flexDirection:"column",gap:14}}>
-              {[{k:"showResults",t:"Show results after voting",s:"Participants see the ranked results after submitting"},{k:"kioskMode",t:"Kiosk mode",s:"Auto-resets after each submission. For shared iPads at meetings."},{k:"captcha",t:"Require CAPTCHA",s:"Checkbox verification. Recommended for online-only exercises."}].map(s=>(
+              {[{k:"showResults",t:"Show results after voting",s:"Participants see the ranked results after submitting"},{k:"kioskMode",t:"Kiosk mode",s:"Auto-resets after each submission. For shared iPads at meetings."},{k:"captcha",t:"Require CAPTCHA",s:"Checkbox verification. Recommended for online-only exercises."},{k:"randomize",t:"Randomize option order",s:"Shuffles options differently for each voter to reduce position bias."}].map(s=>(
                 <div key={s.k}>
                   <div className="togw" onClick={()=>setForm({...form,[s.k]:!form[s.k]})}>
                     <div className={`tog${form[s.k]?" on":""}`}/>
@@ -1163,8 +1177,8 @@ function VotePage({vs,setVS,onExit}){
           <button key={m.id} className={`btn bxs ${previewMode===m.id?"bp":"bg"}`} onClick={()=>setPreviewMode(m.id)}>{m.label}</button>
         ))}
       </div>}
-      <div style={{background:"var(--bg)",flex:1,overflow:"auto",display:"flex",justifyContent:"center"}}>
-      <div style={isPreview&&previewMode!=="desktop"?{width:previewMode==="mobile"?390:768,maxWidth:"100vw",flexShrink:0,overflow:"hidden",border:"1px solid var(--bd)",borderRadius:"var(--r3)",margin:"16px",background:"var(--sur)",boxShadow:"var(--s5)"}:{width:"100%",maxWidth:800}}>
+      <div style={{background:isPreview&&previewMode!=="desktop"?"#e8eaed":"var(--bg)",flex:1,overflow:"auto",display:"flex",justifyContent:"center",alignItems:"flex-start",padding:isPreview&&previewMode!=="desktop"?"24px 0":"0"}}>
+      <div style={isPreview&&previewMode==="mobile"?{width:390,flexShrink:0,borderRadius:40,overflow:"hidden",border:"8px solid #1B2A4A",boxShadow:"0 0 0 2px #0a1628, 0 24px 48px rgba(0,0,0,.35)",background:"var(--sur)",position:"relative"}:isPreview&&previewMode==="tablet"?{width:768,maxWidth:"calc(100vw - 48px)",flexShrink:0,borderRadius:20,overflow:"hidden",border:"6px solid #1B2A4A",boxShadow:"0 0 0 2px #0a1628, 0 20px 40px rgba(0,0,0,.25)",background:"var(--sur)"}:{width:"100%",maxWidth:800}}>
       <div className="vbody">
         {step==="intro"&&<VoteIntro project={project} pairCount={mode==="roundrobin"?rrPairs.length:tState?.matchups?.length||0} onStart={()=>setVS({...vs,step:"voting"})}/>}
         {step==="voting"&&currentPair&&<VoteStep project={project} pair={currentPair} progress={progress} onVote={handleVote}/>}
