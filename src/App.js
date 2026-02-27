@@ -9,11 +9,11 @@ const SEED = [
     description:"Help us prioritize features for the new aquatic center.",
     demoEnabled:true, showResults:true, kioskMode:false, captcha:false,
     options:[
-      {id:"o1",name:"Lap Pool (50m)",        desc:"Olympic-size lanes",      emoji:"🏊",img:null},
-      {id:"o2",name:"Leisure Pool & Slides", desc:"Family fun",              emoji:"🎢",img:null},
-      {id:"o3",name:"Hot Tubs & Spa",        desc:"Therapeutic pools",       emoji:"♨️",img:null},
-      {id:"o4",name:"Kids Splash Pad",       desc:"Zero-depth play area",    emoji:"💧",img:null},
-      {id:"o5",name:"Diving Boards",         desc:"1m and 3m springboards",  emoji:"🤿",img:null},
+      {id:"o1",name:"Lap Pool (50m)",        desc:"Olympic-size lanes",img:null},
+      {id:"o2",name:"Leisure Pool & Slides", desc:"Family fun",img:null},
+      {id:"o3",name:"Hot Tubs & Spa",        desc:"Therapeutic pools",img:null},
+      {id:"o4",name:"Kids Splash Pad",       desc:"Zero-depth play area",img:null},
+      {id:"o5",name:"Diving Boards",         desc:"1m and 3m springboards",img:null},
     ],
     demographics:[
       {id:"d1",type:"zipcode",label:"ZIP Code"},
@@ -28,10 +28,10 @@ const SEED = [
     description:"Which library programs should we expand next year?",
     demoEnabled:false, showResults:true, kioskMode:true, captcha:false,
     options:[
-      {id:"o1",name:"After-School Tutoring", desc:"Free homework help K-12",   emoji:"📚",img:null},
-      {id:"o2",name:"Maker Space",           desc:"3D printing, laser cutting", emoji:"🔧",img:null},
-      {id:"o3",name:"Story Time",            desc:"Early literacy ages 0-5",    emoji:"📖",img:null},
-      {id:"o4",name:"Job Skills Workshops",  desc:"Resume and interview prep",  emoji:"💼",img:null},
+      {id:"o1",name:"After-School Tutoring", desc:"Free homework help K-12",img:null},
+      {id:"o2",name:"Maker Space",           desc:"3D printing, laser cutting",img:null},
+      {id:"o3",name:"Story Time",            desc:"Early literacy ages 0-5",img:null},
+      {id:"o4",name:"Job Skills Workshops",  desc:"Resume and interview prep",img:null},
     ],
     demographics:[],
     mockScores:{o1:22,o2:18,o3:25,o4:12},
@@ -393,49 +393,84 @@ function Landing({onLogin,onDash,onDemo,superOpen,setSuperOpen}){
         </div>
       </nav>
 
+      {/* HERO */}
       <div className="hero">
-        <div style={{position:"relative",zIndex:1}}>
-          <div className="hpill">🗳️ Community Prioritization Platform</div>
-          <h1>Hear what your<br/><em>community values most.</em></h1>
-          <p>Premium pairwise voting for parks, aquatic centers, libraries, and placemaking projects.</p>
+        <div style={{position:"relative",zIndex:1,maxWidth:680,margin:"0 auto"}}>
+          <h1 style={{marginBottom:16}}>A simple way to rank<br/><em>competing priorities.</em></h1>
+          <p style={{fontSize:18,lineHeight:1.7,opacity:.8,marginBottom:10}}>CivicSort is a structured pairwise voting tool that helps groups evaluate trade-offs and produce a clear order of priority.</p>
+          <p style={{fontSize:15,lineHeight:1.7,opacity:.6,marginBottom:32}}>Use it in workshops, open houses, stakeholder sessions, or as a standalone digital exercise.</p>
           <div style={{display:"flex",gap:10,justifyContent:"center",flexWrap:"wrap"}}>
-            <button className="btn bc blg" onClick={onDash}>Start building →</button>
-            <button className="btn blg" style={{background:"rgba(255,255,255,.09)",color:"rgba(255,255,255,.85)",border:"1px solid rgba(255,255,255,.2)"}} onClick={onDemo}>Live demo</button>
+            <button className="btn bc blg" onClick={onDemo}>Try the demo</button>
+            <button className="btn blg" style={{background:"rgba(255,255,255,.09)",color:"rgba(255,255,255,.85)",border:"1px solid rgba(255,255,255,.2)"}} onClick={onDash}>Get started →</button>
           </div>
         </div>
       </div>
 
-      <div className="section" style={{padding:"64px 28px",maxWidth:1080,margin:"0 auto"}}>
+      {/* TWO MODES */}
+      <div style={{padding:"72px 28px",maxWidth:900,margin:"0 auto"}}>
         <div style={{textAlign:"center",marginBottom:48}}>
-          <h2 style={{fontSize:"clamp(24px,3.5vw,36px)",fontWeight:300,letterSpacing:"-.02em"}}>Built for civic engagement professionals</h2>
+          <p style={{fontSize:11,fontWeight:600,letterSpacing:".1em",textTransform:"uppercase",color:"var(--c)",marginBottom:10}}>Two ways to clarify what rises to the top</p>
+          <h2 style={{fontSize:"clamp(22px,3vw,34px)",fontWeight:300,letterSpacing:"-.02em"}}>Choose the format that fits your process.</h2>
         </div>
-        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(260px,1fr))",gap:16}}>
-          {[
-            {i:"⚡",t:"Quick Prioritization",d:"Single-elimination bracket. Surfaces a top-3 podium from up to 20 options."},
-            {i:"🔄",t:"Full Ranking",d:"Round robin — every option vs every other. Complete ranked list from up to 8 options."},
-            {i:"📟",t:"Kiosk Mode",d:"Auto-resets after each submission. Designed for shared iPads at public meetings."},
-            {i:"🌐",t:"12 Languages",d:"Voters choose their language. Option names and UI strings translate via AI."},
-            {i:"🖼️",t:"Image Upload",d:"Upload a photo per option — ideal for facility renderings or park amenities."},
-            {i:"📊",t:"Branded Export",d:"Results report with your logo and colors. Ready for council presentations."},
-          ].map(f=>(
-            <div key={f.t} className="card" style={{padding:24}}>
-              <div style={{width:40,height:40,borderRadius:"var(--r2)",background:"var(--fp)",color:"var(--f)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,marginBottom:12}}>{f.i}</div>
-              <h3 style={{fontSize:14,fontWeight:500,marginBottom:6,fontFamily:"var(--fb)"}}>{f.t}</h3>
-              <p style={{color:"var(--i3)",fontSize:13,lineHeight:1.6}}>{f.d}</p>
-            </div>
-          ))}
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(320px,1fr))",gap:20}}>
+          <div className="card" style={{padding:32,borderTop:`3px solid ${`var(--c)`}`}}>
+            <div style={{fontSize:32,marginBottom:16}}>⚡</div>
+            <h3 style={{fontSize:18,fontWeight:400,marginBottom:10,letterSpacing:"-.01em"}}>Bracket Mode</h3>
+            <p style={{color:"var(--i2)",fontSize:14,lineHeight:1.7,marginBottom:16}}>Head-to-head comparisons in a tournament format. Quickly narrow up to 20 options down to the highest priorities.</p>
+            <p style={{fontSize:13,color:"var(--c)",fontWeight:500}}>Best when you need energy, speed, and a clear short list.</p>
+          </div>
+          <div className="card" style={{padding:32,borderTop:`3px solid ${`var(--f)`}`}}>
+            <div style={{fontSize:32,marginBottom:16}}>🔄</div>
+            <h3 style={{fontSize:18,fontWeight:400,marginBottom:10,letterSpacing:"-.01em"}}>Ranking Mode</h3>
+            <p style={{color:"var(--i2)",fontSize:14,lineHeight:1.7,marginBottom:16}}>Every option compared against every other. Generate a complete ranked list when sequencing and trade-offs matter.</p>
+            <p style={{fontSize:13,color:"var(--f)",fontWeight:500}}>Best when you need depth and defensible ordering.</p>
+          </div>
         </div>
       </div>
 
+      {/* DESIGNED FOR REAL WORLD */}
       <div style={{background:"var(--sur)",borderTop:"1px solid var(--bd)",borderBottom:"1px solid var(--bd)"}}>
-        <div style={{padding:"64px 28px",maxWidth:820,margin:"0 auto"}}>
-          <div style={{textAlign:"center",marginBottom:40}}>
-            <h2 style={{fontSize:"clamp(22px,3vw,32px)",fontWeight:300,letterSpacing:"-.02em"}}>Pay per engagement, not per month.</h2>
-            <p style={{color:"var(--i3)",marginTop:8,fontSize:14}}>Window starts when you <strong>launch</strong> — not when you purchase.</p>
+        <div style={{padding:"72px 28px",maxWidth:1000,margin:"0 auto"}}>
+          <div style={{textAlign:"center",marginBottom:48}}>
+            <p style={{fontSize:11,fontWeight:600,letterSpacing:".1em",textTransform:"uppercase",color:"var(--c)",marginBottom:10}}>Designed for real-world decision making</p>
+            <h2 style={{fontSize:"clamp(20px,3vw,32px)",fontWeight:300,letterSpacing:"-.02em",maxWidth:600,margin:"0 auto"}}>Everything you need for a professional exercise.</h2>
           </div>
-          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(230px,1fr))",gap:16}}>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))",gap:16}}>
             {[
-              {l:"Single",p:"$990",s:"1 exercise · 5,000 responses · 3 months",feat:false},
+              {i:"📟",t:"Kiosk-ready",d:"Auto-resets for shared devices at events and open houses."},
+              {i:"🌐",t:"Multilingual by default",d:"Voters choose their language. AI translates option names instantly."},
+              {i:"🖼️",t:"Visual comparison",d:"Upload images per option to support photo-based decision making."},
+              {i:"📊",t:"Branded results report",d:"Download a clean, presentation-ready report with your logo and colors."},
+            ].map(f=>(
+              <div key={f.t} className="card" style={{padding:22}}>
+                <div style={{fontSize:24,marginBottom:10}}>{f.i}</div>
+                <h3 style={{fontSize:13,fontWeight:600,marginBottom:5,fontFamily:"var(--fb)"}}>{f.t}</h3>
+                <p style={{color:"var(--i3)",fontSize:13,lineHeight:1.6}}>{f.d}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* TRY BEFORE YOU COMMIT */}
+      <div style={{padding:"72px 28px",maxWidth:680,margin:"0 auto",textAlign:"center"}}>
+        <p style={{fontSize:11,fontWeight:600,letterSpacing:".1em",textTransform:"uppercase",color:"var(--c)",marginBottom:10}}>Try before you commit</p>
+        <h2 style={{fontSize:"clamp(20px,3vw,32px)",fontWeight:300,letterSpacing:"-.02em",marginBottom:14}}>Create and preview at no cost.</h2>
+        <p style={{color:"var(--i3)",fontSize:15,lineHeight:1.7,marginBottom:28}}>Build your exercise, refine it internally, share a preview with colleagues. Only pay when you decide to launch it publicly.</p>
+        <button className="btn bc blg" onClick={onDash}>Get started for free →</button>
+      </div>
+
+      {/* PRICING */}
+      <div style={{background:"var(--sur)",borderTop:"1px solid var(--bd)",borderBottom:"1px solid var(--bd)"}}>
+        <div style={{padding:"72px 28px",maxWidth:860,margin:"0 auto"}}>
+          <div style={{textAlign:"center",marginBottom:40}}>
+            <p style={{fontSize:11,fontWeight:600,letterSpacing:".1em",textTransform:"uppercase",color:"var(--c)",marginBottom:10}}>Pricing</p>
+            <h2 style={{fontSize:"clamp(22px,3vw,32px)",fontWeight:300,letterSpacing:"-.02em"}}>Pay per exercise.</h2>
+            <p style={{color:"var(--i3)",marginTop:8,fontSize:14}}>Three months of access starts when you <strong>launch</strong> — not when you purchase.</p>
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(230px,1fr))",gap:16,marginBottom:24}}>
+            {[
+              {l:"Single Exercise",p:"$990",s:"Up to 5,000 responses · Three months of access",feat:false},
               {l:"Bundle of 3",p:"$2,500",s:"Save $470 · best for active agencies",feat:true},
               {l:"Bundle of 6",p:"$4,500",s:"Save $1,440 · large firms",feat:false},
             ].map(pr=>(
@@ -447,9 +482,11 @@ function Landing({onLogin,onDash,onDemo,superOpen,setSuperOpen}){
               </div>
             ))}
           </div>
+          <p style={{textAlign:"center",fontSize:13,color:"var(--i3)"}}>Custom pricing available for consultants and firms managing multiple projects. <span style={{color:"var(--f)",cursor:"pointer",fontWeight:500}}>Get in touch →</span></p>
         </div>
       </div>
 
+      {/* FOOTER */}
       <div style={{padding:"20px 28px",display:"flex",justifyContent:"space-between",alignItems:"center",borderTop:"1px solid var(--bd)",flexWrap:"wrap",gap:12}}>
         <NavLogo onClick={()=>{}}/>
         <p style={{fontSize:12,color:"var(--i4)"}}>© 2025 CivicSort · civicsort.com</p>
@@ -770,7 +807,7 @@ function ExportPage({project,projects,onBack}){
                     <div key={r.id} className="rrow">
                       <div className="rrnk" style={i<3?{background:["#fef3c7","#f1f5f9","#fde8d8"][i],color:["#92400e","#374151","#78350f"][i]}:{}}>{i<3?medals[i]:i+1}</div>
                       <div style={{flex:1}}>
-                        <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}><span style={{fontSize:13,fontWeight:500}}>{r.emoji} {r.name}</span><span style={{fontSize:12,color:"var(--i3)"}}>{total>0?Math.round((r.score/total)*100):0}%</span></div>
+                        <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}><span style={{fontSize:13,fontWeight:500}}>{r.name}</span><span style={{fontSize:12,color:"var(--i3)"}}>{total>0?Math.round((r.score/total)*100):0}%</span></div>
                         <div className="rbar"><div className="rfill" style={{width:`${(r.score/maxScore)*100}%`,background:reportColor}}/></div>
                       </div>
                       <div style={{fontSize:12,fontWeight:600,color:"var(--i3)",width:36,textAlign:"right"}}>{r.score}</div>
@@ -938,7 +975,7 @@ function ProjectModal({project,onSave,onClose}){
               {form.options.map(o=>(
                 <div key={o.id} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 12px",background:"var(--sur)",border:"1px solid var(--bd)",borderRadius:"var(--r2)",marginBottom:7}}>
                   <label htmlFor={`img-${o.id}`} className="oth" style={{cursor:"pointer"}} aria-label={`Upload image for ${o.name}`}>
-                    {o.img?<img src={o.img} alt={o.name}/>:<span>{o.emoji||"⭐"}</span>}
+                    {o.img?<img src={o.img} alt={o.altText||o.name} style={{width:"100%",height:"100%",objectFit:"cover"}}/>:<span style={{fontSize:18,opacity:.25}}>📷</span>}
                     <div className="othlbl">📷</div>
                     <input id={`img-${o.id}`} type="file" accept="image/*" style={{display:"none"}} onChange={e=>handleImg(o.id,e.target.files[0])}/>
                   </label>
@@ -1166,14 +1203,12 @@ function VoteStep({project,pair,progress,onVote}){
       <div className="vq">Which matters more to you?</div>
       <div className="vgrid">
         <div className={`vc${sel===a.id?" sel":""}`} onClick={()=>pick(a)} role="button" aria-label={`Vote for ${a.name}`} tabIndex={0} onKeyDown={e=>e.key==="Enter"&&pick(a)} style={sel===a.id?{borderColor:project.color}:{}}>
-          {a.img&&<img src={a.img} alt={a.altText||a.name} className="vcimg"/>}
-          <div className="vcn" style={a.img?{}:{fontSize:"clamp(15px,2.5vw,18px)",fontWeight:600}}>{a.name}</div>
+          {a.img?<img src={a.img} alt={a.altText||a.name} className="vcimg"/>:<div style={{fontSize:"clamp(16px,2.5vw,20px)",fontWeight:600,textAlign:"center",padding:"0 8px",lineHeight:1.3}}>{a.name}</div>}
           {a.desc&&<div className="vcd">{a.desc}</div>}
         </div>
         <div className="vschip">VS</div>
         <div className={`vc${sel===b.id?" sel":""}`} onClick={()=>pick(b)} role="button" aria-label={`Vote for ${b.name}`} tabIndex={0} onKeyDown={e=>e.key==="Enter"&&pick(b)} style={sel===b.id?{borderColor:project.color}:{}}>
-          {b.img&&<img src={b.img} alt={b.altText||b.name} className="vcimg"/>}
-          <div className="vcn" style={b.img?{}:{fontSize:"clamp(15px,2.5vw,18px)",fontWeight:600}}>{b.name}</div>
+          {b.img?<img src={b.img} alt={b.altText||b.name} className="vcimg"/>:<div style={{fontSize:"clamp(16px,2.5vw,20px)",fontWeight:600,textAlign:"center",padding:"0 8px",lineHeight:1.3}}>{b.name}</div>}
           {b.desc&&<div className="vcd">{b.desc}</div>}
         </div>
       </div>
@@ -1254,7 +1289,7 @@ function ResultsStep({project,results,mode,onDone}){
             <div key={r.id} className="rrow">
               <div className="rrnk" style={i<3?{background:["#fef3c7","#f1f5f9","#fde8d8"][i],color:["#92400e","#374151","#78350f"][i]}:{}}>{i<3?medals[i]:i+1}</div>
               <div style={{flex:1}}>
-                <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}><span style={{fontSize:13,fontWeight:500}}>{r.emoji} {r.name}</span><span style={{fontSize:12,color:"var(--i3)"}}>{total>0?Math.round((r.score/total)*100):0}%</span></div>
+                <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}><span style={{fontSize:13,fontWeight:500}}>{r.name}</span><span style={{fontSize:12,color:"var(--i3)"}}>{total>0?Math.round((r.score/total)*100):0}%</span></div>
                 <div className="rbar"><div className="rfill" style={{width:`${(r.score/maxScore)*100}%`,background:project.color}}/></div>
               </div>
             </div>
