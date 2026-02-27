@@ -347,6 +347,7 @@ export default function App(){
   const [vs,setVS]=useState(null);
   const [exportP,setExportP]=useState(null);
   const [superOpen,setSuperOpen]=useState(false);
+  const [confirmDel,setConfirmDel]=useState(null);
 
   const notify=(msg,type)=>{setToast({msg,type});setTimeout(()=>setToast(null),3000);};
 
@@ -374,10 +375,23 @@ export default function App(){
       <style>{CSS}</style>
       {view==="landing" && <Landing onLogin={()=>setView("login")} onDash={()=>setView("dashboard")} onDemo={()=>launchVote(SEED[0])} superOpen={superOpen} setSuperOpen={setSuperOpen}/>}
       {view==="login"   && <Login onLogin={()=>setView("dashboard")} onBack={()=>setView("landing")}/>}
-      {view==="dashboard" && <Dashboard tab={tab} setTab={setTab} projects={projects} onBack={()=>setView("landing")} onVote={launchVote} onResults={p=>{setExportP(p);setView("export");}} onNew={()=>{setEditP(null);setShowModal(true);}} onEdit={p=>{setEditP(p);setShowModal(true);}} onDelete={id=>setConfirmDel(id)}/>}
+      {view==="dashboard" && <Dashboard tab={tab} setTab={setTab} projects={projects} onBack={()=>setView("landing")} onVote={launchVote} onResults={p=>{setExportP(p);setView("export");}} onNew={()=>{setEditP(null);setShowModal(true);}} onEdit={p=>{setEditP(p);setShowModal(true);}} onDelete={id=>setConfirmDel(id)} onDuplicate={p=>setProjects(ps=>[{...p,id:"p"+Date.now(),name:p.name+" (copy)",status:"draft",responses:0,created:new Date().toISOString().split("T")[0]},...ps])}/>}
       {view==="voting"  && vs && <VotePage vs={vs} setVS={setVS} onExit={()=>setView("dashboard")}/>}
       {view==="export"  && exportP && <ExportPage project={exportP} projects={projects} onBack={()=>setView("dashboard")}/>}
       {showModal && <ProjectModal project={editP} onSave={saveProject} onClose={()=>{setShowModal(false);setEditP(null);}}/>}
+      {confirmDel&&(
+        <div className="mov" onClick={()=>setConfirmDel(null)}>
+          <div className="card sli" style={{padding:28,maxWidth:360,textAlign:"center"}} onClick={e=>e.stopPropagation()}>
+            <div style={{fontSize:36,marginBottom:10}}>🗑</div>
+            <h3 style={{fontFamily:"var(--fb)",fontWeight:500,fontSize:15,marginBottom:6}}>Delete this project?</h3>
+            <p style={{fontSize:13,color:"var(--i3)",marginBottom:20,lineHeight:1.6}}>This cannot be undone. All responses and settings will be lost.</p>
+            <div style={{display:"flex",gap:8,justifyContent:"center"}}>
+              <button className="btn bo bsm" onClick={()=>setConfirmDel(null)}>Cancel</button>
+              <button className="btn bdr bsm" onClick={()=>{setProjects(ps=>ps.filter(p=>p.id!==confirmDel));setConfirmDel(null);}}>Delete</button>
+            </div>
+          </div>
+        </div>
+      )}
       {toast && <div className={`toast${toast.type==="s"?" s":""}`}>{toast.msg}</div>}
     </>
   );
@@ -611,8 +625,7 @@ function Login({onLogin,onBack}){
 }
 
 // ── DASHBOARD ─────────────────────────────────────────────────────────────────
-function Dashboard({tab,setTab,projects,onBack,onVote,onResults,onNew,onEdit,onDelete}){
-  const [confirmDel,setConfirmDel]=useState(null);
+function Dashboard({tab,setTab,projects,onBack,onVote,onResults,onNew,onEdit,onDelete,onDuplicate}){
   const items=[{id:"projects",lbl:"Projects"},{id:"analytics",lbl:"Analytics"},{id:"account",lbl:"Account"}];
   return (
     <div>
@@ -629,20 +642,7 @@ function Dashboard({tab,setTab,projects,onBack,onVote,onResults,onNew,onEdit,onD
           {items.map(i=><button key={i.id} className={`sbit${tab===i.id?" on":""}`} onClick={()=>setTab(i.id)}>{i.lbl}</button>)}
         </aside>
         <main className="main">
-          {confirmDel&&(
-        <div className="mov" onClick={()=>setConfirmDel(null)}>
-          <div className="card sli" style={{padding:28,maxWidth:360,textAlign:"center"}} onClick={e=>e.stopPropagation()}>
-            <div style={{fontSize:36,marginBottom:10}}>🗑</div>
-            <h3 style={{fontFamily:"var(--fb)",fontWeight:500,fontSize:15,marginBottom:6}}>Delete this project?</h3>
-            <p style={{fontSize:13,color:"var(--i3)",marginBottom:20,lineHeight:1.6}}>This cannot be undone. All responses and settings will be lost.</p>
-            <div style={{display:"flex",gap:8,justifyContent:"center"}}>
-              <button className="btn bo bsm" onClick={()=>setConfirmDel(null)}>Cancel</button>
-              <button className="btn bdr bsm" onClick={()=>{setProjects(ps=>ps.filter(p=>p.id!==confirmDel));setConfirmDel(null);}}>Delete</button>
-            </div>
-          </div>
-        </div>
-      )}
-      {tab==="projects"  && <ProjectsView projects={projects} onNew={onNew} onVote={onVote} onResults={onResults} onEdit={onEdit} onDelete={onDelete} onDuplicate={p=>{setProjects(ps=>[{...p,id:"p"+Date.now(),name:p.name+" (copy)",status:"draft",responses:0,created:new Date().toISOString().split("T")[0]},...ps]);}}/>}
+          {tab==="projects"  && <ProjectsView projects={projects} onNew={onNew} onVote={onVote} onResults={onResults} onEdit={onEdit} onDelete={onDelete} onDuplicate={p=>onDuplicate(p)}/>}
           {tab==="analytics" && <AnalyticsView projects={projects}/>}
           {tab==="account"   && <AccountView/>}
         </main>
