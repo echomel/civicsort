@@ -918,16 +918,17 @@ function ProjectModal({project,onSave,onClose}){
               </div>
               {form.options.map(o=>(
                 <div key={o.id} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 12px",background:"var(--sur)",border:"1px solid var(--bd)",borderRadius:"var(--r2)",marginBottom:7}}>
-                  <div className="oth" onClick={()=>imgRefs.current[o.id]?.click()}>
+                  <label htmlFor={`img-${o.id}`} className="oth" style={{cursor:"pointer"}} aria-label={`Upload image for ${o.name}`}>
                     {o.img?<img src={o.img} alt={o.name}/>:<span>{o.emoji||"⭐"}</span>}
                     <div className="othlbl">📷</div>
-                    <input type="file" accept="image/*" style={{display:"none"}} ref={el=>imgRefs.current[o.id]=el} onChange={e=>handleImg(o.id,e.target.files[0])}/>
-                  </div>
+                    <input id={`img-${o.id}`} type="file" accept="image/*" style={{display:"none"}} onChange={e=>handleImg(o.id,e.target.files[0])}/>
+                  </label>
                   <div style={{flex:1}}>
                     <div style={{fontWeight:500,fontSize:13}}>{o.name}</div>
                     {o.desc&&<div style={{fontSize:12,color:"var(--i3)"}}>{o.desc}</div>}
+                    {o.img&&<input className="inp" style={{fontSize:11,padding:"4px 8px",marginTop:3}} placeholder="Alt text for screen readers (required for accessibility)" value={o.altText||""} onChange={e=>setForm(f=>({...f,options:f.options.map(x=>x.id===o.id?{...x,altText:e.target.value}:x)}))} aria-label="Image alt text"/>}
                   </div>
-                  <button className="btn bg bxs" style={{color:"var(--i4)"}} onClick={()=>setForm(f=>({...f,options:f.options.filter(x=>x.id!==o.id)}))}>✕</button>
+                  <button className="btn bg bxs" style={{color:"var(--i4)"}} aria-label={`Remove ${o.name}`} onClick={()=>setForm(f=>({...f,options:f.options.filter(x=>x.id!==o.id)}))}>✕</button>
                 </div>
               ))}
               <p style={{fontSize:11,color:"var(--i4)",marginBottom:10}}>Click thumbnail to upload a photo.</p>
@@ -935,11 +936,11 @@ function ProjectModal({project,onSave,onClose}){
                 <div style={{background:"var(--sub)",borderRadius:"var(--r2)",padding:12,border:"1px solid var(--bd)",display:"flex",flexDirection:"column",gap:8}}>
                   <div style={{fontSize:11,fontWeight:500,color:"var(--i3)",textTransform:"uppercase",letterSpacing:".05em"}}>Add option</div>
                   <div style={{display:"flex",gap:7,alignItems:"center"}}>
-                    <div className="oth" onClick={()=>document.getElementById("noi")?.click()}>
+                    <label htmlFor="noi" className="oth" style={{cursor:"pointer"}} aria-label="Upload image for new option">
                       {newOpt.img?<img src={newOpt.img} alt="" style={{width:"100%",height:"100%",objectFit:"cover",borderRadius:"var(--r1)"}}/>:<span>{newOpt.emoji}</span>}
                       <div className="othlbl">📷</div>
                       <input id="noi" type="file" accept="image/*" style={{display:"none"}} onChange={e=>handleNewImg(e.target.files[0])}/>
-                    </div>
+                    </label>
                     <input className="inp" style={{width:42}} placeholder="🏆" value={newOpt.emoji} onChange={e=>setNewOpt({...newOpt,emoji:e.target.value})}/>
                     <input className="inp" placeholder="Option name *" value={newOpt.name} onChange={e=>setNewOpt({...newOpt,name:e.target.value})} style={{flex:1}}/>
                   </div>
@@ -1112,14 +1113,14 @@ function VoteStep({project,pair,progress,onVote}){
       {progress>0&&<div className="vpb"><div className="vpf" style={{width:`${progress}%`,background:project.color}}/></div>}
       <div className="vq">Which matters more to you?</div>
       <div className="vgrid">
-        <div className={`vc${sel===a.id?" sel":""}`} onClick={()=>pick(a)} style={sel===a.id?{borderColor:project.color}:{}}>
-          {a.img?<img src={a.img} alt={a.name} className="vcimg"/>:<div style={{fontSize:40}}>{a.emoji}</div>}
+        <div className={`vc${sel===a.id?" sel":""}`} onClick={()=>pick(a)} role="button" aria-label={`Vote for ${a.name}`} tabIndex={0} onKeyDown={e=>e.key==="Enter"&&pick(a)} style={sel===a.id?{borderColor:project.color}:{}}>
+          {a.img?<img src={a.img} alt={a.altText||a.name} className="vcimg"/>:<div style={{fontSize:40}}>{a.emoji}</div>}
           <div className="vcn">{a.name}</div>
           {a.desc&&<div className="vcd">{a.desc}</div>}
         </div>
         <div className="vschip">VS</div>
-        <div className={`vc${sel===b.id?" sel":""}`} onClick={()=>pick(b)} style={sel===b.id?{borderColor:project.color}:{}}>
-          {b.img?<img src={b.img} alt={b.name} className="vcimg"/>:<div style={{fontSize:40}}>{b.emoji}</div>}
+        <div className={`vc${sel===b.id?" sel":""}`} onClick={()=>pick(b)} role="button" aria-label={`Vote for ${b.name}`} tabIndex={0} onKeyDown={e=>e.key==="Enter"&&pick(b)} style={sel===b.id?{borderColor:project.color}:{}}>
+          {b.img?<img src={b.img} alt={b.altText||b.name} className="vcimg"/>:<div style={{fontSize:40}}>{b.emoji}</div>}
           <div className="vcn">{b.name}</div>
           {b.desc&&<div className="vcd">{b.desc}</div>}
         </div>
