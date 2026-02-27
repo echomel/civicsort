@@ -876,8 +876,6 @@ function ProjectModal({project,onSave,onClose}){
   const [form,setForm]=useState(project||{name:"",slug:"",type:"roundrobin",status:"draft",color:"#1a3328",accent:"#d96b52",description:"",demoEnabled:false,showResults:true,kioskMode:false,captcha:false,logo:null,options:[{id:"o1",name:"Option A",desc:"",img:null},{id:"o2",name:"Option B",desc:"",img:null}],demographics:[],mockScores:{}});
   const [iTab,setITab]=useState("basics");
   const [newOpt,setNewOpt]=useState({name:"",desc:"",img:null});
-  const imgRefs=useRef({});
-  const logoRef=useRef();
   const handleLogo=file=>{
     if(!file)return;
     const r=new FileReader();
