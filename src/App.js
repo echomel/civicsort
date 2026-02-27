@@ -214,7 +214,7 @@ h1,h2,h3{font-family:var(--fd);}
 .vc{background:var(--sur);border:1.5px solid var(--bd);border-radius:var(--r4);padding:24px 14px 20px;text-align:center;cursor:pointer;transition:all .15s var(--e);display:flex;flex-direction:column;align-items:center;gap:10px;min-height:160px;justify-content:center;}
 .vc:hover{border-color:var(--f);box-shadow:0 10px 15px rgba(0,0,0,.06);transform:translateY(-2px);}
 .vc.sel{border-color:var(--f);background:var(--fp);}
-.vcimg{width:100%;height:96px;object-fit:cover;border-radius:var(--r2);}
+.vcimg{width:100%;height:140px;object-fit:contain;border-radius:var(--r2);background:var(--sub);padding:4px;}
 .vcn{font-weight:600;font-size:14px;line-height:1.3;}
 .vcd{font-size:12px;color:var(--i3);line-height:1.5;}
 .vschip{width:36px;height:36px;border-radius:50%;background:var(--sub);border:1px solid var(--bd);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;color:var(--i4);flex-shrink:0;}
@@ -350,13 +350,15 @@ export default function App(){
 
   const notify=(msg,type)=>{setToast({msg,type});setTimeout(()=>setToast(null),3000);};
 
-  const launchVote=p=>{
+  const launchVote=async p=>{
+    let ip="unknown";
+    try{const r=await fetch("https://api.ipify.org?format=json");const d=await r.json();ip=d.ip;}catch(e){}
     if(p.type==="tournament"){
       const tState=initTournament(p.options);
-      setVS({project:p,mode:"tournament",tState,rrPairs:[],rrIdx:0,rrVotes:[],step:"intro",demo:{},lang:"en",capDone:false,isPreview:true});
+      setVS({project:p,mode:"tournament",tState,rrPairs:[],rrIdx:0,rrVotes:[],step:"intro",demo:{},lang:"en",capDone:false,isPreview:true,ip});
     } else {
       const rrPairs=buildRR(p.options);
-      setVS({project:p,mode:"roundrobin",tState:null,rrPairs,rrIdx:0,rrVotes:[],step:"intro",demo:{},lang:"en",capDone:false,isPreview:true});
+      setVS({project:p,mode:"roundrobin",tState:null,rrPairs,rrIdx:0,rrVotes:[],step:"intro",demo:{},lang:"en",capDone:false,isPreview:true,ip});
     }
     setView("voting");
   };
@@ -831,7 +833,7 @@ function ExportPage({project,projects,onBack}){
                     <thead>
                       <tr>
                         <th style={{width:32}}><input type="checkbox" checked={allChk} onChange={()=>setSelected(allChk?new Set():new Set(visible.map(r=>r.id)))} style={{accentColor:"var(--f)"}}/></th>
-                        <th>#</th><th>Timestamp</th><th>Top Choice</th><th>ZIP</th><th>Age</th><th>Device</th>
+                        <th>#</th><th>Timestamp</th><th>Top Choice</th><th>ZIP</th><th>Age</th><th>Device</th><th>IP Address</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -844,6 +846,7 @@ function ExportPage({project,projects,onBack}){
                           <td style={{color:"var(--i3)"}}>{row.zip||"—"}</td>
                           <td style={{color:"var(--i3)"}}>{row.age||"—"}</td>
                           <td style={{color:"var(--i3)",textTransform:"capitalize"}}>{row.device}</td>
+                          <td style={{fontFamily:"monospace",fontSize:11,color:"var(--i4)"}}>{row.ip||"—"}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -863,10 +866,11 @@ function genRaw(project){
   const zips=["97201","97202","97203","97204","97205"];
   const ages=["18-24","25-34","35-44","45-54","55-64","65+"];
   const devices=["mobile","tablet","desktop"];
+  const ips=["73.162.44.12","24.5.68.201","98.207.34.11","67.180.12.99","47.221.55.180","76.94.200.31"];
   return Array.from({length:38},(_,i)=>{
     const ts=new Date(Date.now()-Math.random()*7*86400000);
     const opt=project.options[Math.floor(Math.random()*project.options.length)];
-    return {id:"r"+(i+1),ts:ts.toISOString(),topChoice:opt.name,zip:Math.random()>.3?zips[Math.floor(Math.random()*zips.length)]:"",age:Math.random()>.4?ages[Math.floor(Math.random()*ages.length)]:"",device:devices[Math.floor(Math.random()*devices.length)],deleted:false};
+    return {id:"r"+(i+1),ts:ts.toISOString(),topChoice:opt.name,zip:Math.random()>.3?zips[Math.floor(Math.random()*zips.length)]:"",age:Math.random()>.4?ages[Math.floor(Math.random()*ages.length)]:"",device:devices[Math.floor(Math.random()*devices.length)],ip:ips[Math.floor(Math.random()*ips.length)],deleted:false};
   });
 }
 
@@ -1154,13 +1158,14 @@ function VotePage({vs,setVS,onExit}){
         {!project.kioskMode&&<button className="btn bg bsm" onClick={onExit} style={{marginLeft:6}}>✕</button>}
       </div>
 
-      {isPreview&&<div style={{display:"flex",gap:6,justifyContent:"center",padding:"8px 0",borderBottom:"1px solid var(--bd)",background:"var(--sub)"}}>
-        {[{id:"mobile",label:"📱 Mobile",w:390},{id:"tablet",label:"⬜ Tablet",w:768},{id:"desktop",label:"🖥 Desktop",w:"100%"}].map(m=>(
+      {isPreview&&<div style={{display:"flex",gap:6,justifyContent:"center",padding:"8px 0",borderBottom:"1px solid var(--bd)",background:"var(--sub)",flexShrink:0}}>
+        {[{id:"mobile",label:"📱 Mobile"},{id:"tablet",label:"⬜ Tablet"},{id:"desktop",label:"🖥 Desktop"}].map(m=>(
           <button key={m.id} className={`btn bxs ${previewMode===m.id?"bp":"bg"}`} onClick={()=>setPreviewMode(m.id)}>{m.label}</button>
         ))}
       </div>}
-      <div style={{display:"flex",justifyContent:"center",background:"var(--bg)",flex:1,overflow:"auto"}}>
-      <div className="vbody" style={isPreview&&previewMode!=="desktop"?{width:previewMode==="mobile"?390:768,maxWidth:"100%",border:"1px solid var(--bd)",borderRadius:"var(--r3)",margin:"16px auto",background:"var(--sur)",boxShadow:"var(--s4)"}:{}}>
+      <div style={{background:"var(--bg)",flex:1,overflow:"auto",display:"flex",justifyContent:"center"}}>
+      <div style={isPreview&&previewMode!=="desktop"?{width:previewMode==="mobile"?390:768,maxWidth:"100vw",flexShrink:0,overflow:"hidden",border:"1px solid var(--bd)",borderRadius:"var(--r3)",margin:"16px",background:"var(--sur)",boxShadow:"var(--s5)"}:{width:"100%",maxWidth:800}}>
+      <div className="vbody">
         {step==="intro"&&<VoteIntro project={project} pairCount={mode==="roundrobin"?rrPairs.length:tState?.matchups?.length||0} onStart={()=>setVS({...vs,step:"voting"})}/>}
         {step==="voting"&&currentPair&&<VoteStep project={project} pair={currentPair} progress={progress} onVote={handleVote}/>}
         {step==="voting"&&!currentPair&&<div style={{textAlign:"center",padding:32,color:"var(--i3)"}}>Loading…</div>}
@@ -1168,6 +1173,7 @@ function VotePage({vs,setVS,onExit}){
         {step==="demo"&&<DemoStep project={project} demo={demo} setDemo={d=>setVS({...vs,demo:d})} onNext={()=>setVS({...vs,step:project.showResults?"results":"thanks"})}/>}
         {step==="results"&&<ResultsStep project={project} results={mode==="roundrobin"?rrResults:tResults} mode={mode} onDone={handleDone}/>}
         {step==="thanks"&&<ThanksStep kioskMode={project.kioskMode} onDone={handleDone}/>}
+      </div>
       </div>
       </div>
     </div>
