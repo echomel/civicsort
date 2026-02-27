@@ -698,7 +698,7 @@ function ExportPage({project,projects,onBack}){
   const [selected,setSelected]=useState(new Set());
 
   const p=projects.find(x=>x.id===selId)||project;
-  useEffect(()=>{setRawData(genRaw(p));setSelected(new Set());},[selId]);
+  useEffect(()=>{setRawData(genRaw(p));setSelected(new Set());},[selId,p]);
 
   const results=[...p.options].map(o=>({...o,score:p.mockScores[o.id]||0})).sort((a,b)=>b.score-a.score);
   const maxScore=results[0]?.score||1;
@@ -1214,7 +1214,7 @@ function ResultsStep({project,results,mode,onDone}){
 }
 
 function ThanksStep({kioskMode,onDone}){
-  useEffect(()=>{if(kioskMode){const t=setTimeout(onDone,5000);return()=>clearTimeout(t);}},[kioskMode]);
+  useEffect(()=>{if(kioskMode){const t=setTimeout(onDone,5000);return()=>clearTimeout(t);}},[kioskMode,onDone]);
   return (
     <div className="fai" style={{textAlign:"center",paddingTop:48}}>
       <div style={{fontSize:60,marginBottom:12}}>✓</div>
