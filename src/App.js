@@ -730,11 +730,10 @@ function ExportPage({project,projects,onBack}){
           <div className="fi"><label className="lbl">Org name</label><input className="inp" value={orgName} onChange={e=>setOrgName(e.target.value)}/></div>
           <div>
             <div className="lbl" style={{marginBottom:6}}>Report color</div>
-            <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}}>
-              {["#1a3328","#d96b52","#25799B","#3D3580","#2d6a4f","#c07848"].map(c=>(
-                <div key={c} onClick={()=>setReportColor(c)} style={{width:26,height:26,borderRadius:6,background:c,cursor:"pointer",border:reportColor===c?"3px solid var(--i1)":"2px solid transparent",transition:"all .13s"}}/>
-              ))}
-              <input type="color" value={reportColor} onChange={e=>setReportColor(e.target.value)} style={{width:26,height:26,border:"none",borderRadius:6,cursor:"pointer",padding:0}} title="Custom color"/>
+            <div style={{display:"flex",alignItems:"center",gap:8}}>
+              <input type="color" value={reportColor} onChange={e=>setReportColor(e.target.value)} style={{width:36,height:36,border:"1px solid var(--bd)",borderRadius:"var(--r1)",cursor:"pointer",padding:2,background:"var(--sur)"}}/>
+              <input className="inp" value={reportColor} onChange={e=>/^#[0-9A-Fa-f]{0,6}$/.test(e.target.value)&&setReportColor(e.target.value)} style={{fontFamily:"monospace",fontSize:13,width:96}} maxLength={7} placeholder="#1a3328"/>
+              <div style={{width:28,height:28,borderRadius:"var(--r1)",background:reportColor,border:"1px solid var(--bd)",flexShrink:0}}/>
             </div>
           </div>
           <div className="divider"/>
@@ -837,23 +836,41 @@ function genRaw(project){
 // ── PROJECT MODAL ─────────────────────────────────────────────────────────────
 function ProjectModal({project,onSave,onClose}){
   const isNew=!project;
-  const [form,setForm]=useState(project||{name:"",slug:"",type:"roundrobin",status:"draft",color:"#1a3328",accent:"#d96b52",description:"",demoEnabled:false,showResults:true,kioskMode:false,captcha:false,options:[{id:"o1",name:"Option A",desc:"",emoji:"⭐",img:null},{id:"o2",name:"Option B",desc:"",emoji:"⭐",img:null}],demographics:[],mockScores:{}});
+  const [form,setForm]=useState(project||{name:"",slug:"",type:"roundrobin",status:"draft",color:"#1a3328",accent:"#d96b52",description:"",demoEnabled:false,showResults:true,kioskMode:false,captcha:false,logo:null,options:[{id:"o1",name:"Option A",desc:"",img:null},{id:"o2",name:"Option B",desc:"",img:null}],demographics:[],mockScores:{}});
   const [iTab,setITab]=useState("basics");
   const [newOpt,setNewOpt]=useState({name:"",desc:"",img:null});
   const imgRefs=useRef({});
-  const MAX=form.type==="roundrobin"?8:20;
-
-  const handleImg=(id,file)=>{
+  const logoRef=useRef();
+  const handleLogo=file=>{
     if(!file)return;
     const r=new FileReader();
-    r.onload=e=>setForm(f=>({...f,options:f.options.map(o=>o.id===id?{...o,img:e.target.result}:o)}));
+    r.onload=e=>setForm(f=>({...f,logo:e.target.result}));
     r.readAsDataURL(file);
+  };
+  const MAX=form.type==="roundrobin"?8:20;
+
+  const resizeImg=(file,cb,maxW=800,maxH=600)=>{
+    const r=new FileReader();
+    r.onload=e=>{
+      const img=new Image();
+      img.onload=()=>{
+        const scale=Math.min(1,maxW/img.width,maxH/img.height);
+        const canvas=document.createElement("canvas");
+        canvas.width=img.width*scale; canvas.height=img.height*scale;
+        canvas.getContext("2d").drawImage(img,0,0,canvas.width,canvas.height);
+        cb(canvas.toDataURL("image/jpeg",.85));
+      };
+      img.src=e.target.result;
+    };
+    r.readAsDataURL(file);
+  };
+  const handleImg=(id,file)=>{
+    if(!file)return;
+    resizeImg(file,src=>setForm(f=>({...f,options:f.options.map(o=>o.id===id?{...o,img:src}:o)})));
   };
   const handleNewImg=file=>{
     if(!file)return;
-    const r=new FileReader();
-    r.onload=e=>setNewOpt(n=>({...n,img:e.target.result}));
-    r.readAsDataURL(file);
+    resizeImg(file,src=>setNewOpt(n=>({...n,img:src})));
   };
   const addOpt=()=>{
     if(!newOpt.name.trim()||form.options.length>=MAX)return;
@@ -870,7 +887,7 @@ function ProjectModal({project,onSave,onClose}){
         </div>
         <div style={{padding:"12px 22px 0"}}>
           <div className="tpill">
-            {["basics","options","demographics","settings"].map(t=><button key={t} className={`tp${iTab===t?" on":""}`} onClick={()=>setITab(t)} style={{textTransform:"capitalize"}}>{t}</button>)}
+            {["basics","options","demographics","branding","settings"].map(t=><button key={t} className={`tp${iTab===t?" on":""}`} onClick={()=>setITab(t)} style={{textTransform:"capitalize"}}>{t}</button>)}
           </div>
         </div>
         <div className="mb">
@@ -888,7 +905,8 @@ function ProjectModal({project,onSave,onClose}){
                 </div>
               </div>
               <div className="fi"><label className="lbl">Description</label>
-                <textarea className="ta" placeholder="Shown to participants before voting…" value={form.description} onChange={e=>setForm({...form,description:e.target.value})}/>
+                <textarea className="ta" placeholder="Shown to participants before voting. Explain the purpose, context, any tradeoffs they should consider…" value={form.description} onChange={e=>setForm({...form,description:e.target.value})} style={{minHeight:120}}/>
+              <div style={{fontSize:11,color:"var(--i4)",textAlign:"right",marginTop:2}}>{form.description.length} characters</div>
               </div>
               <div className="fi"><label className="lbl">Voting method</label>
                 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
@@ -902,11 +920,10 @@ function ProjectModal({project,onSave,onClose}){
               </div>
               <div>
                 <div className="lbl" style={{marginBottom:6}}>Project color</div>
-                <div style={{display:"flex",gap:6}}>
-                  {["#1a3328","#d96b52","#25799B","#3D3580","#2d6a4f","#c07848"].map(c=>(
-                    <div key={c} onClick={()=>setForm({...form,color:c})} style={{width:26,height:26,borderRadius:6,background:c,cursor:"pointer",border:form.color===c?"2px solid var(--i1)":"2px solid transparent"}}/>
-                  ))}
-                  <input type="color" value={form.color} onChange={e=>setForm({...form,color:e.target.value})} style={{width:26,height:26,border:"none",borderRadius:6,cursor:"pointer",padding:0}}/>
+                <div style={{display:"flex",alignItems:"center",gap:8}}>
+                  <input type="color" value={form.color} onChange={e=>setForm({...form,color:e.target.value})} style={{width:36,height:36,border:"1px solid var(--bd)",borderRadius:"var(--r1)",cursor:"pointer",padding:2,background:"var(--sur)"}}/>
+                  <input className="inp" value={form.color} onChange={e=>/^#[0-9A-Fa-f]{0,6}$/.test(e.target.value)&&setForm({...form,color:e.target.value})} style={{fontFamily:"monospace",fontSize:13,width:96}} maxLength={7} placeholder="#1a3328"/>
+                  <div style={{width:28,height:28,borderRadius:"var(--r1)",background:form.color,border:"1px solid var(--bd)",flexShrink:0}}/>
                 </div>
               </div>
             </div>
@@ -933,7 +950,7 @@ function ProjectModal({project,onSave,onClose}){
                   <button className="btn bg bxs" style={{color:"var(--i4)"}} aria-label={`Remove ${o.name}`} onClick={()=>setForm(f=>({...f,options:f.options.filter(x=>x.id!==o.id)}))}>✕</button>
                 </div>
               ))}
-              <p style={{fontSize:11,color:"var(--i4)",marginBottom:10}}>Click thumbnail to upload a photo.</p>
+              <p style={{fontSize:11,color:"var(--i4)",marginBottom:10}}>Click thumbnail to upload a photo. Recommended: 800×600px, landscape. Images are auto-resized on upload.</p>
               {form.options.length<MAX&&(
                 <div style={{background:"var(--sub)",borderRadius:"var(--r2)",padding:12,border:"1px solid var(--bd)",display:"flex",flexDirection:"column",gap:8}}>
                   <div style={{fontSize:11,fontWeight:500,color:"var(--i3)",textTransform:"uppercase",letterSpacing:".05em"}}>Add option</div>
@@ -977,6 +994,30 @@ function ProjectModal({project,onSave,onClose}){
             </div>
           )}
 
+          {iTab==="branding"&&(
+            <div style={{display:"flex",flexDirection:"column",gap:16}}>
+              <div>
+                <div className="lbl" style={{marginBottom:6}}>Exercise logo</div>
+                <p style={{fontSize:12,color:"var(--i3)",marginBottom:10,lineHeight:1.6}}>Shown at the top of the voting screen. Recommended: PNG with transparent background, at least 200×80px.</p>
+                <div style={{display:"flex",alignItems:"center",gap:12}}>
+                  <label htmlFor="logo-upload" style={{display:"flex",alignItems:"center",justifyContent:"center",width:120,height:56,borderRadius:"var(--r2)",border:"1.5px dashed var(--bd)",background:"var(--sub)",cursor:"pointer",overflow:"hidden",flexShrink:0}}>
+                    {form.logo?<img src={form.logo} alt="Logo" style={{maxWidth:"100%",maxHeight:"100%",objectFit:"contain"}}/>:<div style={{textAlign:"center"}}><div style={{fontSize:18,opacity:.3}}>🖼</div><div style={{fontSize:10,color:"var(--i4)",marginTop:2}}>Upload</div></div>}
+                    <input id="logo-upload" type="file" accept="image/*" style={{display:"none"}} onChange={e=>handleLogo(e.target.files[0])}/>
+                  </label>
+                  {form.logo&&<button className="btn bg bxs" style={{color:"var(--rd)"}} onClick={()=>setForm(f=>({...f,logo:null}))}>Remove logo</button>}
+                </div>
+              </div>
+              <div>
+                <div className="lbl" style={{marginBottom:6}}>Project color</div>
+                <div style={{display:"flex",alignItems:"center",gap:8}}>
+                  <input type="color" value={form.color} onChange={e=>setForm({...form,color:e.target.value})} style={{width:36,height:36,border:"1px solid var(--bd)",borderRadius:"var(--r1)",cursor:"pointer",padding:2,background:"var(--sur)"}}/>
+                  <input className="inp" value={form.color} onChange={e=>/^#[0-9A-Fa-f]{0,6}$/.test(e.target.value)&&setForm({...form,color:e.target.value})} style={{fontFamily:"monospace",fontSize:13,width:96}} maxLength={7} placeholder="#1a3328"/>
+                  <div style={{width:28,height:28,borderRadius:"var(--r1)",background:form.color,border:"1px solid var(--bd)",flexShrink:0}}/>
+                </div>
+              </div>
+            </div>
+          )}
+
           {iTab==="settings"&&(
             <div style={{display:"flex",flexDirection:"column",gap:14}}>
               {[{k:"showResults",t:"Show results after voting",s:"Participants see the ranked results after submitting"},{k:"kioskMode",t:"Kiosk mode",s:"Auto-resets after each submission. For shared iPads at meetings."},{k:"captcha",t:"Require CAPTCHA",s:"Checkbox verification. Recommended for online-only exercises."}].map(s=>(
@@ -1006,6 +1047,7 @@ function VotePage({vs,setVS,onExit}){
   const {project,mode,tState,rrPairs,rrIdx,rrVotes,step,demo,lang,capDone,isPreview}=vs;
   const holdRef=useRef(null);
   const [exitConfirm,setExitConfirm]=useState(false);
+  const [previewMode,setPreviewMode]=useState("desktop");
 
   const progress=mode==="roundrobin"&&rrPairs.length>0?(rrIdx/rrPairs.length)*100:0;
   const currentPair=mode==="roundrobin"?rrPairs[rrIdx]:tState&&!tDone(tState)?tState.matchups[tState.matchIdx]:null;
@@ -1069,13 +1111,21 @@ function VotePage({vs,setVS,onExit}){
       )}
 
       <div className="vhdr" style={{borderBottom:`2px solid ${project.color}`}}>
-        <div style={{width:34,height:34,borderRadius:"var(--r2)",background:project.color,display:"flex",alignItems:"center",justifyContent:"center",fontSize:15,flexShrink:0}}>🗳</div>
+        {project.logo
+          ?<img src={project.logo} alt="Logo" style={{height:34,maxWidth:120,objectFit:"contain",flexShrink:0}}/>
+          :<div style={{width:34,height:34,borderRadius:"var(--r2)",background:project.color,display:"flex",alignItems:"center",justifyContent:"center",fontSize:15,flexShrink:0}}>🗳</div>}
         <div style={{flex:1}}><div style={{fontSize:14,fontWeight:500}}>{project.name}</div><div style={{fontSize:11,color:"var(--i3)"}}>{project.type==="roundrobin"?"Full Ranking":"Quick Prioritization"}</div></div>
         <LangPicker lang={lang} setLang={l=>setVS({...vs,lang:l})}/>
         {!project.kioskMode&&<button className="btn bg bsm" onClick={onExit} style={{marginLeft:6}}>✕</button>}
       </div>
 
-      <div className="vbody">
+      {isPreview&&<div style={{display:"flex",gap:6,justifyContent:"center",padding:"8px 0",borderBottom:"1px solid var(--bd)",background:"var(--sub)"}}>
+        {[{id:"mobile",label:"📱 Mobile",w:390},{id:"tablet",label:"⬜ Tablet",w:768},{id:"desktop",label:"🖥 Desktop",w:"100%"}].map(m=>(
+          <button key={m.id} className={`btn bxs ${previewMode===m.id?"bp":"bg"}`} onClick={()=>setPreviewMode(m.id)}>{m.label}</button>
+        ))}
+      </div>}
+      <div style={{display:"flex",justifyContent:"center",background:"var(--bg)",flex:1,overflow:"auto"}}>
+      <div className="vbody" style={isPreview&&previewMode!=="desktop"?{width:previewMode==="mobile"?390:768,maxWidth:"100%",border:"1px solid var(--bd)",borderRadius:"var(--r3)",margin:"16px auto",background:"var(--sur)",boxShadow:"var(--s4)"}:{}}>
         {step==="intro"&&<VoteIntro project={project} pairCount={mode==="roundrobin"?rrPairs.length:tState?.matchups?.length||0} onStart={()=>setVS({...vs,step:"voting"})}/>}
         {step==="voting"&&currentPair&&<VoteStep project={project} pair={currentPair} progress={progress} onVote={handleVote}/>}
         {step==="voting"&&!currentPair&&<div style={{textAlign:"center",padding:32,color:"var(--i3)"}}>Loading…</div>}
@@ -1083,6 +1133,7 @@ function VotePage({vs,setVS,onExit}){
         {step==="demo"&&<DemoStep project={project} demo={demo} setDemo={d=>setVS({...vs,demo:d})} onNext={()=>setVS({...vs,step:project.showResults?"results":"thanks"})}/>}
         {step==="results"&&<ResultsStep project={project} results={mode==="roundrobin"?rrResults:tResults} mode={mode} onDone={handleDone}/>}
         {step==="thanks"&&<ThanksStep kioskMode={project.kioskMode} onDone={handleDone}/>}
+      </div>
       </div>
     </div>
   );
@@ -1115,14 +1166,14 @@ function VoteStep({project,pair,progress,onVote}){
       <div className="vq">Which matters more to you?</div>
       <div className="vgrid">
         <div className={`vc${sel===a.id?" sel":""}`} onClick={()=>pick(a)} role="button" aria-label={`Vote for ${a.name}`} tabIndex={0} onKeyDown={e=>e.key==="Enter"&&pick(a)} style={sel===a.id?{borderColor:project.color}:{}}>
-          {a.img?<img src={a.img} alt={a.altText||a.name} className="vcimg"/>:<div style={{fontSize:40,opacity:.25}}>📷</div>}
-          <div className="vcn">{a.name}</div>
+          {a.img&&<img src={a.img} alt={a.altText||a.name} className="vcimg"/>}
+          <div className="vcn" style={a.img?{}:{fontSize:"clamp(15px,2.5vw,18px)",fontWeight:600}}>{a.name}</div>
           {a.desc&&<div className="vcd">{a.desc}</div>}
         </div>
         <div className="vschip">VS</div>
         <div className={`vc${sel===b.id?" sel":""}`} onClick={()=>pick(b)} role="button" aria-label={`Vote for ${b.name}`} tabIndex={0} onKeyDown={e=>e.key==="Enter"&&pick(b)} style={sel===b.id?{borderColor:project.color}:{}}>
-          {b.img?<img src={b.img} alt={b.altText||b.name} className="vcimg"/>:<div style={{fontSize:40,opacity:.25}}>📷</div>}
-          <div className="vcn">{b.name}</div>
+          {b.img&&<img src={b.img} alt={b.altText||b.name} className="vcimg"/>}
+          <div className="vcn" style={b.img?{}:{fontSize:"clamp(15px,2.5vw,18px)",fontWeight:600}}>{b.name}</div>
           {b.desc&&<div className="vcd">{b.desc}</div>}
         </div>
       </div>
