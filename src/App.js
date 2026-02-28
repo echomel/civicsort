@@ -761,7 +761,7 @@ function SuperPanel(){
             <table className="sutbl">
               <thead><tr><th>Name</th><th>Org</th><th>Email</th><th>Plan</th><th>Credits</th><th>Status</th><th>Actions</th></tr></thead>
               <tbody>
-                {loadingUsers?(<tr><td colSpan={7} style={{textAlign:"center",padding:20,opacity:.5}}>Loading…</td></tr>):users.length===0?(<tr><td colSpan={7} style={{textAlign:"center",padding:20,opacity:.5}}>No users yet</td></tr>):users.map(u=>(
+                {loadingUsers?(<tr><td colSpan={7} style={{textAlign:"center",padding:20,opacity:.5}}>Loading…</td></tr>):users.length===0?(<tr><td colSpan={7} style={{textAlign:"center",padding:20,opacity:.5}}>No users yet</td></tr>):users.map(u=><tr key={u.id}>
                   <tr key={u.id}>
                     <td style={{fontWeight:500}}>{u.name}</td>
                     <td>{u.org}</td>
@@ -786,8 +786,7 @@ function SuperPanel(){
                         {u.status==="active"?"Suspend":"Reactivate"}
                       </button>
                     </td>
-                  </tr>
-                )))}
+                  </tr>)}
               </tbody>
             </table>
           </div>
