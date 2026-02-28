@@ -847,7 +847,7 @@ function ExportPage({project,projects,onBack}){
                   <div style={{fontSize:11,fontWeight:500,color:"var(--i3)",marginBottom:14,letterSpacing:".04em",textTransform:"uppercase"}}>All Rankings</div>
                   {results.map((r,i)=>(
                     <div key={r.id} className="rrow">
-                      <div className="rrnk" style={i<3?{background:[color+"22","var(--sub)","var(--ins)"][i],color:[color,"var(--i2)","var(--i3)"][i],fontWeight:700}:{}}>{i+1}</div>
+                      <div className="rrnk" style={i<3?{background:[reportColor+"22","var(--sub)","var(--ins)"][i],color:[reportColor,"var(--i2)","var(--i3)"][i],fontWeight:700}:{}}>{i+1}</div>
                       <div style={{flex:1}}>
                         <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}><span style={{fontSize:13,fontWeight:500}}>{r.name}</span><span style={{fontSize:12,color:"var(--i3)"}}>{total>0?Math.round((r.score/total)*100):0}%</span></div>
                         <div className="rbar"><div className="rfill" style={{width:`${(r.score/maxScore)*100}%`,background:reportColor}}/></div>
