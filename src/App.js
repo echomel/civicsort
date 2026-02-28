@@ -393,8 +393,7 @@ export default function App(){
       {confirmDel&&(
         <div className="mov" onClick={()=>setConfirmDel(null)}>
           <div className="card sli" style={{padding:28,maxWidth:360,textAlign:"center"}} onClick={e=>e.stopPropagation()}>
-            <div style={{fontSize:36,marginBottom:10}}>🗑</div>
-            <h3 style={{fontFamily:"var(--fb)",fontWeight:500,fontSize:15,marginBottom:6}}>Delete this project?</h3>
+            <h3 style={{fontFamily:"var(--fb)",fontWeight:500,fontSize:17,marginBottom:6,marginTop:4}}>Delete this project?</h3>
             <p style={{fontSize:13,color:"var(--i3)",marginBottom:20,lineHeight:1.6}}>This cannot be undone. All responses and settings will be lost.</p>
             <div style={{display:"flex",gap:8,justifyContent:"center"}}>
               <button className="btn bo bsm" onClick={()=>setConfirmDel(null)}>Cancel</button>
@@ -697,9 +696,9 @@ function ProjectsView({projects,onNew,onVote,onResults,onEdit,onDelete,onDuplica
             </div>
             <p style={{fontSize:12,color:"var(--i3)",lineHeight:1.5,marginBottom:12}}>{p.description}</p>
             <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:12}}>
-              <span className="chip">🗳 {p.responses}</span>
+              <span className="chip">{p.responses} responses</span>
               <span className="chip">{p.type==="roundrobin"?"Full Ranking":"Quick Prioritization"}</span>
-              {p.kioskMode&&<span className="chip">📟 Kiosk</span>}
+              {p.kioskMode&&<span className="chip">Kiosk</span>}
             </div>
             <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
               <button className="btn bp bsm" onClick={()=>onVote(p)}>Preview</button>
@@ -840,9 +839,9 @@ function ExportPage({project,projects,onBack}){
                       {p.type==="tournament"?"Quick Prioritization — Top 3":"Full Ranking — Top 3"}
                     </div>
                     <div className="podium">
-                      <div className="pcol"><span style={{fontSize:22}}>🥈</span><div className="pbar psi">2</div><div className="pname" style={{color:"rgba(255,255,255,.7)"}}>{results[1]?.name}</div></div>
-                      <div className="pcol"><span style={{fontSize:30}}>🥇</span><div className="pbar pg">1</div><div className="pname" style={{color:"white",fontWeight:600}}>{results[0]?.name}</div></div>
-                      <div className="pcol"><span style={{fontSize:18}}>🥉</span><div className="pbar pb2">3</div><div className="pname" style={{color:"rgba(255,255,255,.7)"}}>{results[2]?.name}</div></div>
+                      <div className="pcol"><div style={{fontSize:11,fontWeight:700,letterSpacing:".04em",color:"var(--i4)",marginBottom:4}}>2nd</div><div className="pbar psi">2</div><div className="pname" style={{color:"rgba(255,255,255,.7)"}}>{results[1]?.name}</div></div>
+                      <div className="pcol"><div style={{fontSize:11,fontWeight:700,letterSpacing:".04em",color:"var(--i4)",marginBottom:4}}>1st</div><div className="pbar pg">1</div><div className="pname" style={{color:"white",fontWeight:600}}>{results[0]?.name}</div></div>
+                      <div className="pcol"><div style={{fontSize:11,fontWeight:700,letterSpacing:".04em",color:"var(--i4)",marginBottom:4}}>3rd</div><div className="pbar pb2">3</div><div className="pname" style={{color:"rgba(255,255,255,.7)"}}>{results[2]?.name}</div></div>
                     </div>
                   </div>
                 )}
@@ -1005,7 +1004,7 @@ function ProjectModal({project,onSave,onClose}){
               <div style={{marginTop:8}}>
                 <div className="lbl" style={{marginBottom:6}}>Intro banner image <span style={{color:"var(--i4)"}}>(optional)</span></div>
                 <label htmlFor="banner-upload" style={{display:"flex",alignItems:"center",justifyContent:"center",width:"100%",height:form.introBanner?120:60,borderRadius:"var(--r2)",border:"1.5px dashed var(--bd)",background:"var(--sub)",cursor:"pointer",overflow:"hidden"}}>
-                  {form.introBanner?<img src={form.introBanner} alt="Banner" style={{width:"100%",height:"100%",objectFit:"cover"}}/>:<div style={{textAlign:"center"}}><div style={{fontSize:14,opacity:.3}}>🖼</div><div style={{fontSize:11,color:"var(--i4)"}}>Upload banner (1200×500 recommended)</div></div>}
+                  {form.introBanner?<img src={form.introBanner} alt="Banner" style={{width:"100%",height:"100%",objectFit:"cover"}}/>:<div style={{textAlign:"center"}}><div style={{fontSize:11,fontWeight:600,opacity:.3,marginBottom:4}}>IMG</div><div style={{fontSize:11,color:"var(--i4)"}}>Upload banner (1200×500 recommended)</div></div>}
                   <input id="banner-upload" type="file" accept="image/*" style={{display:"none"}} onChange={e=>handleBanner(e.target.files[0])}/>
                 </label>
                 {form.introBanner&&<button className="btn bg bxs" style={{marginTop:4,color:"var(--rd)"}} onClick={()=>setForm(f=>({...f,introBanner:null}))}>Remove banner</button>}
@@ -1071,8 +1070,8 @@ function ProjectModal({project,onSave,onClose}){
                 <div key={o.id} draggable onDragStart={()=>setDragIdx(oi)} onDragOver={e=>e.preventDefault()} onDrop={()=>{if(dragIdx===null||dragIdx===oi)return;const opts=[...form.options];const[moved]=opts.splice(dragIdx,1);opts.splice(oi,0,moved);setForm(f=>({...f,options:opts}));setDragIdx(null);}} style={{display:"flex",alignItems:"flex-start",gap:8,padding:"10px 12px",background:dragIdx===oi?"var(--fp)":"var(--sur)",border:`1.5px solid ${dragIdx===oi?"var(--f)":"var(--bd)"}`,borderRadius:"var(--r2)",marginBottom:7,transition:"all .13s"}}>
                   <div style={{color:"var(--i4)",fontSize:16,cursor:"grab",paddingTop:10,flexShrink:0}} title="Drag to reorder">⠿</div>
                   <label htmlFor={`img-${o.id}`} className="oth" style={{cursor:"pointer",flexShrink:0}} aria-label={`Upload image for ${o.name}`} title="Click to upload image">
-                    {o.img?<img src={o.img} alt={o.altText||o.name} style={{width:"100%",height:"100%",objectFit:"cover"}}/>:<span style={{fontSize:18,opacity:.25}}>📷</span>}
-                    <div className="othlbl">📷</div>
+                    {o.img?<img src={o.img} alt={o.altText||o.name} style={{width:"100%",height:"100%",objectFit:"cover"}}/>:<span style={{fontSize:11,opacity:.35,fontWeight:600}}>IMG</span>}
+                    
                     <input id={`img-${o.id}`} type="file" accept="image/*" style={{display:"none"}} onChange={e=>handleImg(o.id,e.target.files[0])}/>
                   </label>
                   <div style={{flex:1}}>
@@ -1089,8 +1088,8 @@ function ProjectModal({project,onSave,onClose}){
                   <div style={{fontSize:11,fontWeight:500,color:"var(--i3)",textTransform:"uppercase",letterSpacing:".05em"}}>Add option</div>
                   <div style={{display:"flex",gap:7,alignItems:"center"}}>
                     <label htmlFor="noi" className="oth" style={{cursor:"pointer",flexShrink:0}} aria-label="Upload image for new option">
-                      {newOpt.img?<img src={newOpt.img} alt="" style={{width:"100%",height:"100%",objectFit:"cover",borderRadius:"var(--r1)"}}/>:<span style={{fontSize:18,opacity:.3}}>📷</span>}
-                      <div className="othlbl">📷</div>
+                      {newOpt.img?<img src={newOpt.img} alt="" style={{width:"100%",height:"100%",objectFit:"cover",borderRadius:"var(--r1)"}}/>:<span style={{fontSize:11,opacity:.35,fontWeight:600}}>IMG</span>}
+                      
                       <input id="noi" type="file" accept="image/*" style={{display:"none"}} onChange={e=>handleNewImg(e.target.files[0])}/>
                     </label>
                     <input className="inp" placeholder="Option name *" value={newOpt.name} onChange={e=>setNewOpt({...newOpt,name:e.target.value})} style={{flex:1}}/>
@@ -1134,7 +1133,7 @@ function ProjectModal({project,onSave,onClose}){
                 <p style={{fontSize:12,color:"var(--i3)",marginBottom:10,lineHeight:1.6}}>Shown at the top of the voting screen. Recommended: PNG with transparent background, at least 200×80px.</p>
                 <div style={{display:"flex",alignItems:"center",gap:12}}>
                   <label htmlFor="logo-upload" style={{display:"flex",alignItems:"center",justifyContent:"center",width:120,height:56,borderRadius:"var(--r2)",border:"1.5px dashed var(--bd)",background:"var(--sub)",cursor:"pointer",overflow:"hidden",flexShrink:0}}>
-                    {form.logo?<img src={form.logo} alt="Logo" style={{maxWidth:"100%",maxHeight:"100%",objectFit:"contain"}}/>:<div style={{textAlign:"center"}}><div style={{fontSize:18,opacity:.3}}>🖼</div><div style={{fontSize:10,color:"var(--i4)",marginTop:2}}>Upload</div></div>}
+                    {form.logo?<img src={form.logo} alt="Logo" style={{maxWidth:"100%",maxHeight:"100%",objectFit:"contain"}}/>:<div style={{textAlign:"center"}}><div style={{fontSize:10,fontWeight:600,opacity:.3,marginBottom:2}}>LOGO</div><div style={{fontSize:10,color:"var(--i4)"}}>Upload</div></div>}
                     <input id="logo-upload" type="file" accept="image/*" style={{display:"none"}} onChange={e=>handleLogo(e.target.files[0])}/>
                   </label>
                   {form.logo&&<button className="btn bg bxs" style={{color:"var(--rd)"}} onClick={()=>setForm(f=>({...f,logo:null}))}>Remove logo</button>}
@@ -1270,8 +1269,7 @@ function VotePage({vs,setVS,onExit}){
       {exitConfirm&&(
         <div className="mov" onClick={()=>setExitConfirm(false)}>
           <div className="card sli" style={{padding:24,maxWidth:300,textAlign:"center"}} onClick={e=>e.stopPropagation()}>
-            <p style={{fontSize:28,marginBottom:10}}>🔓</p>
-            <h3 style={{fontFamily:"var(--fb)",fontWeight:500,fontSize:15,marginBottom:6}}>Exit kiosk mode?</h3>
+            <h3 style={{fontFamily:"var(--fb)",fontWeight:500,fontSize:17,marginBottom:6,marginTop:4}}>Exit kiosk mode?</h3>
             <p style={{fontSize:13,color:"var(--i3)",marginBottom:18}}>Returns to admin dashboard.</p>
             <div style={{display:"flex",gap:8,justifyContent:"center"}}>
               <button className="btn bo bsm" onClick={()=>setExitConfirm(false)}>Cancel</button>
@@ -1282,10 +1280,11 @@ function VotePage({vs,setVS,onExit}){
       )}
 
       <div className="vhdr" style={{borderBottom:`2px solid ${project.color}`}}>
-        {project.logo
-          ?<img src={project.logo} alt="Logo" style={{height:34,maxWidth:120,objectFit:"contain",flexShrink:0}}/>
-          :<div style={{width:34,height:34,borderRadius:"var(--r2)",background:project.color,display:"flex",alignItems:"center",justifyContent:"center",fontSize:15,flexShrink:0}}>🗳</div>}
-        <div style={{flex:1}}><div style={{fontSize:14,fontWeight:500}}>{project.name}</div><div style={{fontSize:11,color:"var(--i3)"}}>{project.type==="roundrobin"?"Full Ranking":"Quick Prioritization"}</div></div>
+        {project.logo&&<img src={project.logo} alt="Logo" style={{height:30,maxWidth:110,objectFit:"contain",flexShrink:0,marginRight:4}}/>}
+        <div style={{flex:1}}>
+          <div style={{fontSize:14,fontWeight:500,lineHeight:1.2}}>{project.name}</div>
+          <div style={{fontSize:11,color:"var(--i3)"}}>{project.type==="roundrobin"?"Full Ranking":"Quick Prioritization"}</div>
+        </div>
         <LangPicker lang={lang} setLang={l=>setVS({...vs,lang:l})}/>
         {!project.kioskMode&&<button className="btn bg bsm" onClick={onExit} style={{marginLeft:6}}>✕</button>}
       </div>
@@ -1313,25 +1312,36 @@ function VotePage({vs,setVS,onExit}){
 }
 
 function VoteIntro({project,pairCount,onStart}){
+  const hex=project.color||"#1B2A4A";
+  const r=parseInt(hex.slice(1,3),16);
+  const g=parseInt(hex.slice(3,5),16);
+  const b=parseInt(hex.slice(5,7),16);
+  const gradientBg=`linear-gradient(180deg, rgba(${r},${g},${b},0.06) 0%, rgba(${r},${g},${b},0) 340px)`;
   return (
-    <div style={{paddingTop:20}}>
-      {project.introBanner&&<img src={project.introBanner} alt="" className="vintro-banner"/>}
-      <div style={{textAlign:"center",paddingBottom:8}}>
-        {project.logo
-          ?<img src={project.logo} alt="Logo" style={{height:48,maxWidth:200,objectFit:"contain",marginBottom:16}}/>
-          :<div style={{width:48,height:48,borderRadius:"var(--r3)",background:project.color,display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,margin:"0 auto 16px"}}>🗳</div>}
+    <div style={{background:gradientBg,paddingBottom:48,minHeight:"60vh"}}>
+      {project.introBanner?(
+        <div style={{position:"relative",marginBottom:24}}>
+          <img src={project.introBanner} alt="" style={{width:"100%",height:180,objectFit:"cover",display:"block"}}/>
+          {project.logo&&<img src={project.logo} alt="Logo" style={{position:"absolute",bottom:-20,left:20,height:40,maxWidth:140,objectFit:"contain",background:"white",borderRadius:"var(--r2)",padding:"4px 8px",boxShadow:"var(--s2)"}}/>}
+        </div>
+      ):(
+        project.logo&&<div style={{textAlign:"center",paddingTop:28,marginBottom:16}}>
+          <img src={project.logo} alt="Logo" style={{height:52,maxWidth:200,objectFit:"contain"}}/>
+        </div>
+      )}
+      <div style={{textAlign:"center",padding:project.introBanner?"32px 20px 0":"20px 20px 0"}}>
         {project.org&&<div className="vintro-org">{project.org}</div>}
         <h2 style={{fontFamily:"var(--vfh,var(--fd))",fontSize:"clamp(22px,4vw,30px)",marginBottom:10,fontWeight:400,lineHeight:1.2}}>{project.name}</h2>
         {project.description&&<p style={{color:"var(--i2)",fontSize:14,lineHeight:1.75,maxWidth:480,margin:"0 auto 12px"}}>{project.description}</p>}
-        {project.introText&&<p style={{color:"var(--i3)",fontSize:13,lineHeight:1.7,maxWidth:460,margin:"0 auto 16px",padding:"12px 16px",background:"var(--sub)",borderRadius:"var(--r2)",borderLeft:"3px solid var(--bd)",textAlign:"left"}}>{project.introText}</p>}
+        {project.introText&&<p style={{color:"var(--i3)",fontSize:13,lineHeight:1.7,maxWidth:460,margin:"0 auto 16px",padding:"12px 16px",background:"rgba(255,255,255,.7)",borderRadius:"var(--r2)",borderLeft:`3px solid ${project.color}`,textAlign:"left"}}>{project.introText}</p>}
         <div style={{display:"flex",gap:8,justifyContent:"center",margin:"16px 0 24px",flexWrap:"wrap"}}>
-          <div className="chip">⏱ ~{Math.max(1,Math.ceil(pairCount*0.3))} min</div>
-          <div className="chip">🔢 {pairCount} comparisons</div>
+          <div className="chip">~{Math.max(1,Math.ceil(pairCount*0.3))} min</div>
+          <div className="chip">{pairCount} comparisons</div>
           <div className="chip">{project.type==="roundrobin"?"Full Ranking":"Quick Prioritization"}</div>
         </div>
         <button className="btn blg" style={{background:project.color,color:"white",fontFamily:"var(--vfb,var(--fb))"}} onClick={onStart}>Start voting →</button>
         <div className="vtrust" style={{marginTop:16}}>
-          <span>🔒</span><span>Anonymous · No account required</span>
+          <span style={{fontSize:10,fontWeight:700,letterSpacing:".06em",opacity:.4}}>PRIVATE</span><span>Anonymous · No account required</span>
         </div>
       </div>
     </div>
@@ -1366,7 +1376,7 @@ function VoteStep({project,pair,progress,onVote,isMobile=false,onRestart}){
         </div>
       </div>
       <div style={{textAlign:"center",marginTop:12}}>
-        <div className="vtrust"><span>🔒</span><span>Anonymous response</span></div>
+        <div className="vtrust"><span style={{fontSize:10,fontWeight:700,letterSpacing:".06em",opacity:.4}}>PRIVATE</span><span>Anonymous response</span></div>
         {progress>0&&<button className="vrestart" onClick={()=>onRestart()}>↩ Start over</button>}
       </div>
     </div>
@@ -1434,9 +1444,9 @@ function ResultsStep({project,results,mode,onDone}){
       </div>
       {results.length>=3&&(
         <div className="podium">
-          <div className="pcol"><span style={{fontSize:22}}>🥈</span><div className="pbar psi">2</div><div className="pname">{results[1]?.name}</div></div>
-          <div className="pcol"><span style={{fontSize:30}}>🥇</span><div className="pbar pg">1</div><div className="pname" style={{fontWeight:600}}>{results[0]?.name}</div></div>
-          <div className="pcol"><span style={{fontSize:18}}>🥉</span><div className="pbar pb2">3</div><div className="pname">{results[2]?.name}</div></div>
+          <div className="pcol"><div style={{fontSize:11,fontWeight:700,letterSpacing:".04em",color:"var(--i4)",marginBottom:4}}>2nd</div><div className="pbar psi">2</div><div className="pname">{results[1]?.name}</div></div>
+          <div className="pcol"><div style={{fontSize:11,fontWeight:700,letterSpacing:".04em",color:"var(--i4)",marginBottom:4}}>1st</div><div className="pbar pg">1</div><div className="pname" style={{fontWeight:600}}>{results[0]?.name}</div></div>
+          <div className="pcol"><div style={{fontSize:11,fontWeight:700,letterSpacing:".04em",color:"var(--i4)",marginBottom:4}}>3rd</div><div className="pbar pb2">3</div><div className="pname">{results[2]?.name}</div></div>
         </div>
       )}
       {showFull&&(
