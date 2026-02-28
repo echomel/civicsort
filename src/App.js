@@ -561,6 +561,14 @@ export default function App(){
     setProjects(ps=>ps.map(x=>x.id===p.id?{...x,status:newStatus}:x));
   };
 
+  const saveProfile=async(patch)=>{
+    if(!user) return;
+    const {error}=await supabase.from("profiles").update(patch).eq("id",user.id);
+    if(error){notify("Save failed","e");return;}
+    setProfile(p=>({...p,...patch}));
+    notify("Saved","s");
+  };
+
   if(view==="loading") return (
     <>
       <style>{CSS}</style>
@@ -575,7 +583,7 @@ export default function App(){
       <style>{CSS}</style>
       {view==="landing" && <Landing onLogin={()=>setView("login")} onDash={()=>setView("login")} onDemo={()=>launchVote(SEED[0])} superOpen={superOpen} setSuperOpen={setSuperOpen}/>}
       {view==="login"   && <Login onLogin={handleLogin} onSignup={handleSignup} onBack={()=>setView("landing")} loading={loading}/>}
-      {view==="dashboard" && <Dashboard tab={tab} setTab={setTab} projects={projects} user={user} profile={profile} onLogout={handleLogout} onBack={()=>setView("landing")} onVote={launchVote} onResults={p=>{setExportP(p);setView("export");}} onNew={()=>{setEditP(null);setShowModal(true);}} onEdit={p=>{setEditP(p);setShowModal(true);}} onDelete={id=>setConfirmDel(id)} onDuplicate={duplicateProject} onToggleStatus={toggleStatus}/>}
+      {view==="dashboard" && <Dashboard tab={tab} setTab={setTab} projects={projects} user={user} profile={profile} onLogout={handleLogout} onBack={()=>setView("landing")} onVote={launchVote} onResults={p=>{setExportP(p);setView("export");}} onNew={()=>{setEditP(null);setShowModal(true);}} onEdit={p=>{setEditP(p);setShowModal(true);}} onDelete={id=>setConfirmDel(id)} onDuplicate={duplicateProject} onToggleStatus={toggleStatus} onProfileSave={saveProfile}/>}
       {view==="voting"  && vs && <VotePage vs={vs} setVS={setVS} onExit={()=>setView("dashboard")}/>}
       {view==="export"  && exportP && <ExportPage project={exportP} projects={projects} onBack={()=>setView("dashboard")}/>}
       {showModal && <ProjectModal project={editP} onSave={saveProject} onClose={()=>{setShowModal(false);setEditP(null);}}/>}
@@ -715,9 +723,22 @@ function Landing({onLogin,onDash,onDemo,superOpen,setSuperOpen}){
 
 // ── SUPER ADMIN ───────────────────────────────────────────────────────────────
 function SuperPanel(){
-  const [users,setUsers]=useState(MOCK_USERS);
+  const [users,setUsers]=useState([]);
   const [stab,setStab]=useState("users");
-  const upd=(id,patch)=>setUsers(us=>us.map(u=>u.id===id?{...u,...patch}:u));
+  const [loadingUsers,setLoadingUsers]=useState(true);
+
+  useEffect(()=>{
+    supabase.from("profiles").select("*").order("created_at",{ascending:false}).then(({data,error})=>{
+      if(data) setUsers(data);
+      if(error) console.error("SuperPanel load:",error);
+      setLoadingUsers(false);
+    });
+  },[]);
+
+  const upd=async(id,patch)=>{
+    setUsers(us=>us.map(u=>u.id===id?{...u,...patch}:u));
+    await supabase.from("profiles").update(patch).eq("id",id);
+  };
   return (
     <div className="supanel">
       <div style={{maxWidth:1080,margin:"0 auto"}}>
@@ -738,11 +759,11 @@ function SuperPanel(){
             <table className="sutbl">
               <thead><tr><th>Name</th><th>Org</th><th>Email</th><th>Plan</th><th>Credits</th><th>Status</th><th>Actions</th></tr></thead>
               <tbody>
-                {users.map(u=>(
+                {loadingUsers?(<tr><td colSpan={7} style={{textAlign:"center",padding:20,opacity:.5}}>Loading…</td></tr>):users.length===0?(<tr><td colSpan={7} style={{textAlign:"center",padding:20,opacity:.5}}>No users yet</td></tr>):users.map(u=>(
                   <tr key={u.id}>
                     <td style={{fontWeight:500}}>{u.name}</td>
                     <td>{u.org}</td>
-                    <td style={{fontFamily:"monospace",fontSize:12,color:"rgba(255,255,255,.55)"}}>{u.email}</td>
+                    <td style={{fontFamily:"monospace",fontSize:12,color:"rgba(255,255,255,.55)"}}>{u.id?.slice(0,8)}…</td>
                     <td>
                       <select value={u.plan} onChange={e=>upd(u.id,{plan:e.target.value})} style={{background:"rgba(255,255,255,.08)",border:"1px solid rgba(255,255,255,.15)",color:"white",borderRadius:"var(--r1)",padding:"4px 8px",fontSize:12,fontFamily:"var(--fb)",cursor:"pointer"}}>
                         {["Single","Bundle of 3","Bundle of 6"].map(p=><option key={p}>{p}</option>)}
@@ -764,7 +785,7 @@ function SuperPanel(){
                       </button>
                     </td>
                   </tr>
-                ))}
+                )))}
               </tbody>
             </table>
           </div>
@@ -856,14 +877,14 @@ function Login({onLogin,onSignup,onBack,loading}){
 }
 
 // ── DASHBOARD ─────────────────────────────────────────────────────────────────
-function Dashboard({tab,setTab,projects,user,profile,onLogout,onBack,onVote,onResults,onNew,onEdit,onDelete,onDuplicate,onToggleStatus}){
+function Dashboard({tab,setTab,projects,user,profile,onLogout,onBack,onVote,onResults,onNew,onEdit,onDelete,onDuplicate,onToggleStatus,onProfileSave}){
   const items=[{id:"projects",lbl:"Projects"},{id:"analytics",lbl:"Analytics"},{id:"account",lbl:"Account"}];
   return (
     <div>
       <nav className="nav">
         <NavLogo onClick={onBack}/>
         <div style={{display:"flex",gap:8,alignItems:"center"}}>
-          <span style={{fontSize:12,color:"var(--i3)",padding:"5px 10px",background:"var(--sub)",borderRadius:"var(--r1)",border:"1px solid var(--bd)"}}>Riverside Consulting</span>
+          {profile?.org&&<span style={{fontSize:12,color:"var(--i3)",padding:"5px 10px",background:"var(--sub)",borderRadius:"var(--r1)",border:"1px solid var(--bd)"}}>{profile.org}</span>}
           <button className="btn bg bsm" onClick={onBack}>← Home</button>
         </div>
       </nav>
@@ -875,7 +896,7 @@ function Dashboard({tab,setTab,projects,user,profile,onLogout,onBack,onVote,onRe
         <main className="main">
           {tab==="projects"  && <ProjectsView projects={projects} onNew={onNew} onVote={onVote} onResults={onResults} onEdit={onEdit} onDelete={onDelete} onDuplicate={onDuplicate} onToggleStatus={onToggleStatus}/>}
           {tab==="analytics" && <AnalyticsView projects={projects}/>}
-          {tab==="account"   && <AccountView/>}
+          {tab==="account"   && <AccountView user={user} profile={profile} onProfileSave={onProfileSave}/>}
         </main>
       </div>
     </div>
@@ -947,27 +968,61 @@ function AnalyticsView({projects}){
   );
 }
 
-function AccountView(){
+function AccountView({user,profile,onProfileSave}){
+  const [name,setName]=useState(profile?.name||"");
+  const [org,setOrg]=useState(profile?.org||"");
+  const [saving,setSaving]=useState(false);
+
+  // Sync if profile loads after mount
+  useEffect(()=>{
+    if(profile){setName(profile.name||"");setOrg(profile.org||"");}
+  },[profile]);
+
+  const save=async()=>{
+    setSaving(true);
+    await onProfileSave({name,org});
+    setSaving(false);
+  };
+
+  const planLabel=profile?.plan&&profile.plan!=="none"?profile.plan:"No active plan";
+  const credits=profile?.credits??0;
+
   return (
     <div className="fai">
       <div className="ph"><div><h1 className="pt">Account</h1></div></div>
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(260px,1fr))",gap:16}}>
+
+        {/* Credits / Plan */}
         <div className="card" style={{padding:22}}>
-          <h3 style={{fontSize:14,fontWeight:500,fontFamily:"var(--fb)",marginBottom:12}}>Credits</h3>
-          <div style={{padding:14,background:"var(--sub)",borderRadius:"var(--r2)",border:"1px solid var(--bd)"}}>
-            <div style={{fontFamily:"var(--fd)",fontSize:32,color:"var(--f)",fontWeight:300}}>2</div>
-            <div style={{fontSize:12,color:"var(--i3)",marginTop:2}}>exercises remaining · Bundle of 3</div>
+          <h3 style={{fontSize:14,fontWeight:500,fontFamily:"var(--fb)",marginBottom:12}}>Plan & Credits</h3>
+          <div style={{padding:14,background:"var(--sub)",borderRadius:"var(--r2)",border:"1px solid var(--bd)",marginBottom:12}}>
+            <div style={{fontFamily:"var(--fd)",fontSize:32,color:"var(--f)",fontWeight:300}}>{credits}</div>
+            <div style={{fontSize:12,color:"var(--i3)",marginTop:2}}>exercises remaining · {planLabel}</div>
           </div>
-          <button className="btn bp bsm" style={{marginTop:12}}>Buy more</button>
+          <div style={{fontSize:12,color:"var(--i4)",marginBottom:10}}>Credits are added when you purchase a plan. Each launched exercise uses one credit.</div>
+          <button className="btn bp bsm">Buy more</button>
         </div>
+
+        {/* Profile */}
         <div className="card" style={{padding:22}}>
           <h3 style={{fontSize:14,fontWeight:500,fontFamily:"var(--fb)",marginBottom:12}}>Profile</h3>
           <div style={{display:"flex",flexDirection:"column",gap:10}}>
-            <div className="fi"><label className="lbl">Organization</label><input className="inp" defaultValue="Riverside Consulting Group"/></div>
-            <div className="fi"><label className="lbl">Email</label><input className="inp" type="email" defaultValue="admin@riversidecg.com"/></div>
-            <button className="btn bp bsm" style={{alignSelf:"flex-start"}}>Save</button>
+            <div className="fi"><label className="lbl">Name</label><input className="inp" placeholder="Your name" value={name} onChange={e=>setName(e.target.value)}/></div>
+            <div className="fi"><label className="lbl">Organisation</label><input className="inp" placeholder="City of Springfield" value={org} onChange={e=>setOrg(e.target.value)}/></div>
+            <div className="fi"><label className="lbl">Email</label><input className="inp" type="email" value={user?.email||""} disabled style={{opacity:.6}}/></div>
+            <button className="btn bp bsm" style={{alignSelf:"flex-start"}} onClick={save} disabled={saving}>{saving?"Saving…":"Save"}</button>
           </div>
         </div>
+
+        {/* Team — placeholder for multi-user */}
+        <div className="card" style={{padding:22}}>
+          <h3 style={{fontSize:14,fontWeight:500,fontFamily:"var(--fb)",marginBottom:4}}>Team</h3>
+          <p style={{fontSize:12,color:"var(--i3)",marginBottom:14,lineHeight:1.6}}>Invite colleagues to access this workspace. Team accounts are coming soon.</p>
+          <div style={{padding:12,background:"var(--sub)",borderRadius:"var(--r2)",border:"1px dashed var(--bd)",textAlign:"center"}}>
+            <div style={{fontSize:12,color:"var(--i4)"}}>Multi-user accounts coming soon</div>
+          </div>
+        </div>
+
       </div>
     </div>
   );
