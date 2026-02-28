@@ -785,8 +785,6 @@ function ExportPage({project,projects,onBack}){
   const results=[...p.options].map(o=>({...o,score:p.mockScores[o.id]||0})).sort((a,b)=>b.score-a.score);
   const maxScore=results[0]?.score||1;
   const total=results.reduce((a,r)=>a+r.score,0);
-  const medals=["🥇","🥈","🥉"];
-
   const visible=rawData.filter(r=>!r.deleted);
   const allChk=visible.length>0&&visible.every(r=>selected.has(r.id));
   const toggle=id=>setSelected(s=>{const n=new Set(s);n.has(id)?n.delete(id):n.add(id);return n;});
@@ -849,7 +847,7 @@ function ExportPage({project,projects,onBack}){
                   <div style={{fontSize:11,fontWeight:500,color:"var(--i3)",marginBottom:14,letterSpacing:".04em",textTransform:"uppercase"}}>All Rankings</div>
                   {results.map((r,i)=>(
                     <div key={r.id} className="rrow">
-                      <div className="rrnk" style={i<3?{background:["#fef3c7","#f1f5f9","#fde8d8"][i],color:["#92400e","#374151","#78350f"][i]}:{}}>{i<3?medals[i]:i+1}</div>
+                      <div className="rrnk" style={i<3?{background:[color+"22","var(--sub)","var(--ins)"][i],color:[color,"var(--i2)","var(--i3)"][i],fontWeight:700}:{}}>{i+1}</div>
                       <div style={{flex:1}}>
                         <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}><span style={{fontSize:13,fontWeight:500}}>{r.name}</span><span style={{fontSize:12,color:"var(--i3)"}}>{total>0?Math.round((r.score/total)*100):0}%</span></div>
                         <div className="rbar"><div className="rfill" style={{width:`${(r.score/maxScore)*100}%`,background:reportColor}}/></div>
@@ -919,7 +917,7 @@ function genRaw(project){
 // ── PROJECT MODAL ─────────────────────────────────────────────────────────────
 function ProjectModal({project,onSave,onClose}){
   const isNew=!project;
-  const [form,setForm]=useState(project||{name:"",slug:"",type:"roundrobin",status:"draft",color:"#1B2A4A",accent:"#d96b52",description:"",introText:"",introBanner:null,vsLabel:"VS",font:"default",demoEnabled:false,showResults:true,kioskMode:false,captcha:false,logo:null,options:[{id:"o1",name:"Option A",desc:"",img:null},{id:"o2",name:"Option B",desc:"",img:null}],demographics:[],mockScores:{}});
+  const [form,setForm]=useState(project||{name:"",slug:"",type:"roundrobin",status:"draft",color:"#1B2A4A",accent:"#d96b52",description:"",introText:"",introBanner:null,vsLabel:"VS",font:"default",resultView:"bars",demoEnabled:false,showResults:true,kioskMode:false,captcha:false,logo:null,options:[{id:"o1",name:"Option A",desc:"",img:null},{id:"o2",name:"Option B",desc:"",img:null}],demographics:[],mockScores:{}});
   const [iTab,setITab]=useState("basics");
   const [newOpt,setNewOpt]=useState({name:"",desc:"",img:null});
   const [dragIdx,setDragIdx]=useState(null);
@@ -1026,35 +1024,6 @@ function ProjectModal({project,onSave,onClose}){
                   <input type="color" value={form.color} onChange={e=>setForm({...form,color:e.target.value})} style={{width:36,height:36,border:"1px solid var(--bd)",borderRadius:"var(--r1)",cursor:"pointer",padding:2,background:"var(--sur)"}}/>
                   <input className="inp" value={form.color} onChange={e=>/^#[0-9A-Fa-f]{0,6}$/.test(e.target.value)&&setForm({...form,color:e.target.value})} style={{fontFamily:"monospace",fontSize:13,width:96}} maxLength={7} placeholder="#1B2A4A"/>
                   <div style={{width:28,height:28,borderRadius:"var(--r1)",background:form.color,border:"1px solid var(--bd)",flexShrink:0}}/>
-                </div>
-              </div>
-              <div>
-                <div className="lbl" style={{marginBottom:6}}>Comparison label</div>
-                <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}}>
-                  {["VS","or","/","·"].map(v=>(
-                    <button key={v} className={`btn bsm ${form.vsLabel===v?"bp":"bo"}`} onClick={()=>setForm({...form,vsLabel:v})}>{v}</button>
-                  ))}
-                  <input className="inp" style={{width:80,fontSize:13}} placeholder="Custom…" value={["VS","or","/","·"].includes(form.vsLabel)?"":form.vsLabel||""} onChange={e=>setForm({...form,vsLabel:e.target.value})}/>
-                </div>
-              </div>
-              <div>
-                <div className="lbl" style={{marginBottom:8}}>Font style</div>
-                <div style={{display:"flex",flexDirection:"column",gap:6}}>
-                  {[
-                    {id:"default",label:"Default",head:"Fraunces",body:"Inter"},
-                    {id:"modern",label:"Modern",head:"DM Sans",body:"DM Sans"},
-                    {id:"editorial",label:"Editorial",head:"Playfair Display",body:"Source Sans 3"},
-                    {id:"civic",label:"Civic",head:"Libre Baskerville",body:"Open Sans"},
-                    {id:"clean",label:"Clean",head:"Plus Jakarta Sans",body:"Plus Jakarta Sans"},
-                  ].map(f=>(
-                    <div key={f.id} onClick={()=>setForm(fm=>({...fm,font:f.id}))} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 12px",borderRadius:"var(--r2)",border:`1.5px solid ${form.font===f.id?"var(--f)":"var(--bd)"}`,background:form.font===f.id?"var(--fp)":"var(--sur)",cursor:"pointer",transition:"all .13s"}}>
-                      <div style={{width:18,height:18,borderRadius:"50%",border:`2px solid ${form.font===f.id?"var(--f)":"var(--bd)"}`,background:form.font===f.id?"var(--f)":"transparent",flexShrink:0}}/>
-                      <div>
-                        <div style={{fontFamily:`'${f.head}',serif`,fontSize:14,fontWeight:400}}>{f.label}</div>
-                        <div style={{fontSize:11,color:"var(--i4)"}}>{f.head} + {f.body}</div>
-                      </div>
-                    </div>
-                  ))}
                 </div>
               </div>
             </div>
@@ -1433,38 +1402,84 @@ function DemoStep({project,demo,setDemo,onNext}){
 }
 
 function ResultsStep({project,results,mode,onDone}){
-  const medals=["🥇","🥈","🥉"];
+  const [view,setView]=useState(project.resultView||"bars");
   const maxScore=results[0]?.score||1;
   const total=results.reduce((a,r)=>a+r.score,0);
-  const showFull=mode==="roundrobin";
+  const pct=r=>total>0?Math.round((r.score/total)*100):0;
+  const color=project.color||"#1B2A4A";
+  const hex=color; const r2=parseInt(hex.slice(1,3),16); const g2=parseInt(hex.slice(3,5),16); const b2=parseInt(hex.slice(5,7),16);
+  const fade=`rgba(${r2},${g2},${b2},0.08)`;
+  const rankColors=["var(--f)","var(--i2)","var(--i3)"];
   return (
-    <div className="fai">
-      <div style={{textAlign:"center",marginBottom:20}}>
-        <div style={{fontSize:38,marginBottom:6}}>🎉</div>
-        <h2 style={{fontSize:20,marginBottom:3,fontWeight:300}}>Community Results</h2>
-        <p style={{color:"var(--i3)",fontSize:13}}>{mode==="roundrobin"?"Ranked by community votes — full list":"Top 3 from bracket play"}</p>
-      </div>
-      {results.length>=3&&(
-        <div className="podium">
-          <div className="pcol"><div style={{fontSize:11,fontWeight:700,letterSpacing:".04em",color:"var(--i4)",marginBottom:4}}>2nd</div><div className="pbar psi">2</div><div className="pname">{results[1]?.name}</div></div>
-          <div className="pcol"><div style={{fontSize:11,fontWeight:700,letterSpacing:".04em",color:"var(--i4)",marginBottom:4}}>1st</div><div className="pbar pg">1</div><div className="pname" style={{fontWeight:600}}>{results[0]?.name}</div></div>
-          <div className="pcol"><div style={{fontSize:11,fontWeight:700,letterSpacing:".04em",color:"var(--i4)",marginBottom:4}}>3rd</div><div className="pbar pb2">3</div><div className="pname">{results[2]?.name}</div></div>
+    <div style={{paddingBottom:32}}>
+      {/* Header with gradient */}
+      <div style={{background:`linear-gradient(160deg,${color} 0%,${color}cc 100%)`,borderRadius:"var(--r3)",padding:"24px 20px 28px",marginBottom:24,color:"white",textAlign:"center",position:"relative",overflow:"hidden"}}>
+        <div style={{position:"absolute",inset:0,background:"url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.04'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")",opacity:.4}}/>
+        <div style={{position:"relative"}}>
+          <div style={{fontSize:11,fontWeight:700,letterSpacing:".1em",textTransform:"uppercase",opacity:.7,marginBottom:6}}>Results</div>
+          <h2 style={{fontFamily:"var(--vfh,var(--fd))",fontSize:"clamp(20px,4vw,26px)",fontWeight:400,marginBottom:4,lineHeight:1.2}}>{project.name}</h2>
+          <p style={{fontSize:12,opacity:.7,marginBottom:0}}>{mode==="roundrobin"?"Ranked by community votes":"Top picks from bracket play"}</p>
+          {results[0]&&<div style={{marginTop:16,display:"inline-flex",alignItems:"center",gap:8,background:"rgba(255,255,255,.15)",borderRadius:99,padding:"6px 14px"}}>
+            <div style={{width:8,height:8,borderRadius:"50%",background:"white"}}/>
+            <span style={{fontSize:13,fontWeight:500}}>{results[0].name}</span>
+            <span style={{fontSize:11,opacity:.8}}>ranked #1</span>
+          </div>}
         </div>
-      )}
-      {showFull&&(
-        <div style={{marginBottom:20}}>
+      </div>
+
+      {/* View toggle */}
+      <div style={{display:"flex",gap:6,justifyContent:"center",marginBottom:20}}>
+        {[{id:"bars",label:"Bar chart"},{id:"podium",label:"Podium"}].map(v=>(
+          <button key={v.id} className={`btn bsm ${view===v.id?"bp":"bo"}`} onClick={()=>setView(v.id)}>{v.label}</button>
+        ))}
+      </div>
+
+      {/* Bar chart view */}
+      {view==="bars"&&(
+        <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:20}}>
           {results.map((r,i)=>(
-            <div key={r.id} className="rrow">
-              <div className="rrnk" style={i<3?{background:["#fef3c7","#f1f5f9","#fde8d8"][i],color:["#92400e","#374151","#78350f"][i]}:{}}>{i<3?medals[i]:i+1}</div>
-              <div style={{flex:1}}>
-                <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}><span style={{fontSize:13,fontWeight:500}}>{r.name}</span><span style={{fontSize:12,color:"var(--i3)"}}>{total>0?Math.round((r.score/total)*100):0}%</span></div>
-                <div className="rbar"><div className="rfill" style={{width:`${(r.score/maxScore)*100}%`,background:project.color}}/></div>
+            <div key={r.id} style={{background:i===0?fade:"var(--sur)",border:`1.5px solid ${i===0?color:"var(--bd)"}`,borderRadius:"var(--r3)",padding:"14px 16px",transition:"all .2s"}}>
+              <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:8}}>
+                <div style={{width:24,height:24,borderRadius:"50%",background:i===0?color:"var(--sub)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:700,color:i===0?"white":"var(--i3)",flexShrink:0}}>{i+1}</div>
+                <div style={{flex:1,fontWeight:i===0?600:500,fontSize:14,color:"var(--i1)",lineHeight:1.3}}>{r.name}</div>
+                <div style={{fontSize:14,fontWeight:700,color:i===0?color:"var(--i2)",minWidth:36,textAlign:"right"}}>{pct(r)}%</div>
+              </div>
+              <div style={{height:6,background:"var(--ins)",borderRadius:99,overflow:"hidden"}}>
+                <div style={{height:"100%",borderRadius:99,background:i===0?color:`${color}55`,width:`${(r.score/maxScore)*100}%`,transition:"width 1s var(--e)"}}/>
               </div>
             </div>
           ))}
         </div>
       )}
-      <button className="btn bo bmd" style={{width:"100%",justifyContent:"center"}} onClick={onDone}>Done</button>
+
+      {/* Podium view */}
+      {view==="podium"&&results.length>=2&&(
+        <div style={{marginBottom:24}}>
+          <div style={{display:"flex",alignItems:"flex-end",justifyContent:"center",gap:8,marginBottom:20,paddingTop:16}}>
+            {[results[1],results[0],results[2]].filter(Boolean).map((r,i)=>{
+              const heights=[72,100,56]; const isFirst=r===results[0];
+              const rank=results.indexOf(r)+1;
+              return (
+                <div key={r.id} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:6,flex:1,maxWidth:120}}>
+                  <div style={{fontSize:11,fontWeight:600,color:isFirst?color:"var(--i3)",letterSpacing:".04em"}}>{rank === 1?"1st":rank===2?"2nd":"3rd"}</div>
+                  <div style={{width:"100%",height:heights[i],background:isFirst?color:`${color}44`,borderRadius:"6px 6px 0 0",display:"flex",alignItems:"flex-end",justifyContent:"center",paddingBottom:8,fontSize:16,fontWeight:700,color:isFirst?"white":color}}>{rank}</div>
+                  <div style={{fontSize:11,fontWeight:500,textAlign:"center",lineHeight:1.3,color:"var(--i2)",maxWidth:90}}>{r.name}</div>
+                  <div style={{fontSize:11,color:"var(--i4)"}}>{pct(r)}%</div>
+                </div>
+              );
+            })}
+          </div>
+          {results.slice(3).map((r,i)=>(
+            <div key={r.id} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 12px",borderRadius:"var(--r2)",marginBottom:4}}>
+              <div style={{width:20,fontSize:11,fontWeight:600,color:"var(--i4)",textAlign:"center"}}>{i+4}</div>
+              <div style={{flex:1,fontSize:13,color:"var(--i2)"}}>{r.name}</div>
+              <div style={{fontSize:12,color:"var(--i3)"}}>{pct(r)}%</div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <button className="btn bmd" style={{width:"100%",justifyContent:"center",background:color,color:"white",border:"none"}} onClick={onDone}>Done</button>
     </div>
   );
 }
@@ -1473,7 +1488,7 @@ function ThanksStep({kioskMode,onDone}){
   useEffect(()=>{if(kioskMode){const t=setTimeout(onDone,5000);return()=>clearTimeout(t);}},[kioskMode,onDone]);
   return (
     <div className="fai" style={{textAlign:"center",paddingTop:48}}>
-      <div style={{fontSize:60,marginBottom:12}}>✓</div>
+      <div style={{width:56,height:56,borderRadius:"50%",background:"var(--gn)",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 16px"}}><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg></div>
       <h2 style={{fontSize:24,marginBottom:8,fontWeight:300}}>Thank you!</h2>
       <p style={{color:"var(--i3)",fontSize:14,maxWidth:360,margin:"0 auto 28px",lineHeight:1.6}}>Your priorities have been recorded. Results will help shape future planning decisions.</p>
       {kioskMode?<p style={{fontSize:13,color:"var(--i4)"}}>Resetting in 5 seconds…</p>:<button className="btn bp blg" onClick={onDone}>Done</button>}
