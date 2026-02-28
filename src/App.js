@@ -761,32 +761,37 @@ function SuperPanel(){
             <table className="sutbl">
               <thead><tr><th>Name</th><th>Org</th><th>Email</th><th>Plan</th><th>Credits</th><th>Status</th><th>Actions</th></tr></thead>
               <tbody>
-                {loadingUsers?(<tr><td colSpan={7} style={{textAlign:"center",padding:20,opacity:.5}}>Loading…</td></tr>):users.length===0?(<tr><td colSpan={7} style={{textAlign:"center",padding:20,opacity:.5}}>No users yet</td></tr>):users.map(u=><tr key={u.id}>
+                {loadingUsers?(
+                  <tr><td colSpan={7} style={{textAlign:"center",padding:20,opacity:.5}}>Loading…</td></tr>
+                ):users.length===0?(
+                  <tr><td colSpan={7} style={{textAlign:"center",padding:20,opacity:.5}}>No users yet</td></tr>
+                ):users.map(u=>(
                   <tr key={u.id}>
                     <td style={{fontWeight:500}}>{u.name}</td>
                     <td>{u.org}</td>
                     <td style={{fontFamily:"monospace",fontSize:12,color:"rgba(255,255,255,.55)"}}>{u.id?.slice(0,8)}…</td>
                     <td>
-                      <select value={u.plan} onChange={e=>upd(u.id,{plan:e.target.value})} style={{background:"rgba(255,255,255,.08)",border:"1px solid rgba(255,255,255,.15)",color:"white",borderRadius:"var(--r1)",padding:"4px 8px",fontSize:12,fontFamily:"var(--fb)",cursor:"pointer"}}>
-                        {["Single","Bundle of 3","Bundle of 6"].map(p=><option key={p}>{p}</option>)}
+                      <select value={u.plan||"none"} onChange={e=>upd(u.id,{plan:e.target.value})} style={{background:"rgba(255,255,255,.08)",border:"1px solid rgba(255,255,255,.15)",color:"white",borderRadius:"var(--r1)",padding:"4px 8px",fontSize:12,fontFamily:"var(--fb)",cursor:"pointer"}}>
+                        {["none","Single","Bundle of 3","Bundle of 6"].map(p=><option key={p}>{p}</option>)}
                       </select>
                     </td>
                     <td>
                       <div style={{display:"flex",alignItems:"center",gap:6}}>
-                        <button onClick={()=>upd(u.id,{credits:Math.max(0,u.credits-1)})} style={{width:22,height:22,borderRadius:4,border:"1px solid rgba(255,255,255,.2)",background:"rgba(255,255,255,.08)",color:"white",cursor:"pointer",fontFamily:"var(--fb)"}}>−</button>
-                        <span style={{minWidth:16,textAlign:"center"}}>{u.credits}</span>
-                        <button onClick={()=>upd(u.id,{credits:u.credits+1})} style={{width:22,height:22,borderRadius:4,border:"1px solid rgba(255,255,255,.2)",background:"rgba(255,255,255,.08)",color:"white",cursor:"pointer",fontFamily:"var(--fb)"}}>+</button>
+                        <button onClick={()=>upd(u.id,{credits:Math.max(0,(u.credits||0)-1)})} style={{width:22,height:22,borderRadius:4,border:"1px solid rgba(255,255,255,.2)",background:"rgba(255,255,255,.08)",color:"white",cursor:"pointer",fontFamily:"var(--fb)"}}>−</button>
+                        <span style={{minWidth:16,textAlign:"center"}}>{u.credits||0}</span>
+                        <button onClick={()=>upd(u.id,{credits:(u.credits||0)+1})} style={{width:22,height:22,borderRadius:4,border:"1px solid rgba(255,255,255,.2)",background:"rgba(255,255,255,.08)",color:"white",cursor:"pointer",fontFamily:"var(--fb)"}}>+</button>
                       </div>
                     </td>
                     <td>
-                      <span style={{display:"inline-flex",alignItems:"center",padding:"2px 8px",borderRadius:99,fontSize:11,fontWeight:500,background:u.status==="active"?"rgba(22,163,74,.25)":"rgba(220,38,38,.25)",color:u.status==="active"?"#86efac":"#fca5a5",border:`1px solid ${u.status==="active"?"rgba(22,163,74,.4)":"rgba(220,38,38,.4)"}`}}>{u.status}</span>
+                      <span style={{display:"inline-flex",alignItems:"center",padding:"2px 8px",borderRadius:99,fontSize:11,fontWeight:500,background:u.status==="active"?"rgba(22,163,74,.25)":"rgba(220,38,38,.25)",color:u.status==="active"?"#86efac":"#fca5a5",border:`1px solid ${u.status==="active"?"rgba(22,163,74,.4)":"rgba(220,38,38,.4)"}`}}>{u.status||"active"}</span>
                     </td>
                     <td>
                       <button onClick={()=>upd(u.id,{status:u.status==="active"?"suspended":"active"})} style={{padding:"4px 10px",borderRadius:"var(--r1)",border:"1px solid rgba(255,255,255,.2)",background:"rgba(255,255,255,.08)",color:"rgba(255,255,255,.8)",fontSize:12,fontFamily:"var(--fb)",cursor:"pointer"}}>
                         {u.status==="active"?"Suspend":"Reactivate"}
                       </button>
                     </td>
-                  </tr>)}
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
