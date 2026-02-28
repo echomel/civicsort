@@ -205,19 +205,30 @@ h1,h2,h3{font-family:var(--fd);}
 
 /* vote page */
 .vpage{min-height:100vh;background:var(--bg);display:flex;flex-direction:column;}
-.vhdr{padding:12px 20px;background:var(--sur);border-bottom:1px solid var(--bd);display:flex;align-items:center;gap:12px;}
-.vbody{flex:1;padding:32px 20px 48px;max-width:600px;margin:0 auto;width:100%;}
-.vpb{height:3px;background:var(--ins);border-radius:99px;margin-bottom:28px;overflow:hidden;}
+.vhdr{padding:14px 20px;background:var(--sur);border-bottom:1px solid var(--bd);display:flex;align-items:center;gap:12px;}
+.vhdr-accent{height:4px;width:100%;flex-shrink:0;}
+.vbody{flex:1;padding:32px 20px 56px;max-width:640px;margin:0 auto;width:100%;}
+.vpb{height:4px;background:var(--ins);border-radius:99px;margin-bottom:8px;overflow:hidden;}
 .vpf{height:100%;border-radius:99px;transition:width .4s var(--e);}
-.vq{text-align:center;font-family:var(--fd);font-size:clamp(18px,3.5vw,26px);margin-bottom:24px;line-height:1.3;font-weight:300;}
-.vgrid{display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:center;}
-.vc{background:var(--sur);border:1.5px solid var(--bd);border-radius:var(--r4);padding:24px 14px 20px;text-align:center;cursor:pointer;transition:all .15s var(--e);display:flex;flex-direction:column;align-items:center;gap:10px;min-height:160px;justify-content:center;}
-.vc:hover{border-color:var(--f);box-shadow:0 10px 15px rgba(0,0,0,.06);transform:translateY(-2px);}
-.vc.sel{border-color:var(--f);background:var(--fp);}
-.vcimg{width:100%;height:140px;object-fit:contain;border-radius:var(--r2);background:var(--sub);padding:4px;}
-.vcn{font-weight:600;font-size:14px;line-height:1.3;}
-.vcd{font-size:12px;color:var(--i3);line-height:1.5;}
-.vschip{width:36px;height:36px;border-radius:50%;background:var(--sub);border:1px solid var(--bd);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;color:var(--i4);flex-shrink:0;}
+.vprog{display:flex;align-items:center;gap:10px;margin-bottom:28px;}
+.vprogtxt{font-size:11px;color:var(--i4);font-weight:500;white-space:nowrap;}
+.vq{text-align:center;font-family:var(--vfh,var(--fd));font-size:clamp(20px,3.5vw,28px);margin-bottom:28px;line-height:1.3;font-weight:400;color:var(--i1);}
+.vgrid{display:grid;grid-template-columns:1fr auto 1fr;gap:12px;align-items:stretch;}
+.vc{background:var(--sur);border:1.5px solid var(--bd);border-radius:var(--r4);padding:28px 18px 22px;text-align:center;cursor:pointer;transition:all .18s var(--e);display:flex;flex-direction:column;align-items:center;gap:12px;min-height:180px;justify-content:center;position:relative;overflow:hidden;}
+.vc::before{content:"";position:absolute;inset:0;background:var(--vca,var(--f));opacity:0;transition:opacity .18s;}
+.vc:hover{border-color:var(--vca,var(--f));box-shadow:0 12px 24px rgba(0,0,0,.08);transform:translateY(-3px);}
+.vc:hover::before{opacity:.04;}
+.vc.sel{border-color:var(--vca,var(--f));box-shadow:0 0 0 3px var(--vcap,rgba(27,42,74,.12));}
+.vc.sel::before{opacity:.06;}
+.vcimg{width:100%;height:150px;object-fit:contain;border-radius:var(--r2);background:var(--sub);padding:4px;}
+.vcn{font-family:var(--vfb,var(--fb));font-weight:600;font-size:15px;line-height:1.3;position:relative;}
+.vcd{font-size:12px;color:var(--i3);line-height:1.5;position:relative;}
+.vschip{width:40px;height:40px;border-radius:50%;background:var(--sur);border:1.5px solid var(--bd);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--i3);flex-shrink:0;box-shadow:var(--s1);}
+.vtrust{display:flex;align-items:center;justify-content:center;gap:5px;margin-top:20px;font-size:11px;color:var(--i4);}
+.vrestart{background:none;border:none;font-size:11px;color:var(--i4);cursor:pointer;text-decoration:underline;margin-top:10px;display:block;margin-left:auto;margin-right:auto;padding:4px 8px;}
+.vrestart:hover{color:var(--i2);}
+.vintro-banner{width:100%;height:160px;object-fit:cover;border-radius:var(--r3);margin-bottom:20px;}
+.vintro-org{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--i4);margin-bottom:6px;}
 
 /* results */
 .podium{display:flex;align-items:flex-end;justify-content:center;gap:10px;margin:20px 0 28px;}
@@ -909,7 +920,7 @@ function genRaw(project){
 // ── PROJECT MODAL ─────────────────────────────────────────────────────────────
 function ProjectModal({project,onSave,onClose}){
   const isNew=!project;
-  const [form,setForm]=useState(project||{name:"",slug:"",type:"roundrobin",status:"draft",color:"#1B2A4A",accent:"#d96b52",description:"",demoEnabled:false,showResults:true,kioskMode:false,captcha:false,logo:null,options:[{id:"o1",name:"Option A",desc:"",img:null},{id:"o2",name:"Option B",desc:"",img:null}],demographics:[],mockScores:{}});
+  const [form,setForm]=useState(project||{name:"",slug:"",type:"roundrobin",status:"draft",color:"#1B2A4A",accent:"#d96b52",description:"",introText:"",introBanner:null,vsLabel:"VS",font:"default",demoEnabled:false,showResults:true,kioskMode:false,captcha:false,logo:null,options:[{id:"o1",name:"Option A",desc:"",img:null},{id:"o2",name:"Option B",desc:"",img:null}],demographics:[],mockScores:{}});
   const [iTab,setITab]=useState("basics");
   const [newOpt,setNewOpt]=useState({name:"",desc:"",img:null});
   const [dragIdx,setDragIdx]=useState(null);
@@ -918,6 +929,10 @@ function ProjectModal({project,onSave,onClose}){
     const r=new FileReader();
     r.onload=e=>setForm(f=>({...f,logo:e.target.result}));
     r.readAsDataURL(file);
+  };
+  const handleBanner=file=>{
+    if(!file)return;
+    resizeImg(file,src=>setForm(f=>({...f,introBanner:src})),1200,500);
   };
   const MAX=form.type==="roundrobin"?8:20;
 
@@ -979,6 +994,22 @@ function ProjectModal({project,onSave,onClose}){
               <div className="fi"><label className="lbl">Description</label>
                 <textarea className="ta" placeholder="Shown to participants before voting. Explain the purpose, context, any tradeoffs they should consider…" value={form.description} onChange={e=>setForm({...form,description:e.target.value})} style={{minHeight:120}}/>
               <div style={{fontSize:11,color:"var(--i4)",textAlign:"right",marginTop:2}}>{form.description.length} characters</div>
+              <div className="fi" style={{marginTop:8}}>
+                <label className="lbl">Vote prompt <span style={{color:"var(--i4)"}}>(the question shown during voting)</span></label>
+                <input className="inp" placeholder="Which matters more to you?" value={form.vsPrompt||""} onChange={e=>setForm({...form,vsPrompt:e.target.value})}/>
+              </div>
+              <div className="fi" style={{marginTop:8}}>
+                <label className="lbl">Intro text <span style={{color:"var(--i4)"}}>(optional — shown below description)</span></label>
+                <textarea className="ta" placeholder="Add context, framing, or instructions for participants…" value={form.introText||""} onChange={e=>setForm({...form,introText:e.target.value})} style={{minHeight:72}}/>
+              </div>
+              <div style={{marginTop:8}}>
+                <div className="lbl" style={{marginBottom:6}}>Intro banner image <span style={{color:"var(--i4)"}}>(optional)</span></div>
+                <label htmlFor="banner-upload" style={{display:"flex",alignItems:"center",justifyContent:"center",width:"100%",height:form.introBanner?120:60,borderRadius:"var(--r2)",border:"1.5px dashed var(--bd)",background:"var(--sub)",cursor:"pointer",overflow:"hidden"}}>
+                  {form.introBanner?<img src={form.introBanner} alt="Banner" style={{width:"100%",height:"100%",objectFit:"cover"}}/>:<div style={{textAlign:"center"}}><div style={{fontSize:14,opacity:.3}}>🖼</div><div style={{fontSize:11,color:"var(--i4)"}}>Upload banner (1200×500 recommended)</div></div>}
+                  <input id="banner-upload" type="file" accept="image/*" style={{display:"none"}} onChange={e=>handleBanner(e.target.files[0])}/>
+                </label>
+                {form.introBanner&&<button className="btn bg bxs" style={{marginTop:4,color:"var(--rd)"}} onClick={()=>setForm(f=>({...f,introBanner:null}))}>Remove banner</button>}
+              </div>
               </div>
               <div className="fi"><label className="lbl">Voting method</label>
                 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
@@ -996,6 +1027,35 @@ function ProjectModal({project,onSave,onClose}){
                   <input type="color" value={form.color} onChange={e=>setForm({...form,color:e.target.value})} style={{width:36,height:36,border:"1px solid var(--bd)",borderRadius:"var(--r1)",cursor:"pointer",padding:2,background:"var(--sur)"}}/>
                   <input className="inp" value={form.color} onChange={e=>/^#[0-9A-Fa-f]{0,6}$/.test(e.target.value)&&setForm({...form,color:e.target.value})} style={{fontFamily:"monospace",fontSize:13,width:96}} maxLength={7} placeholder="#1B2A4A"/>
                   <div style={{width:28,height:28,borderRadius:"var(--r1)",background:form.color,border:"1px solid var(--bd)",flexShrink:0}}/>
+                </div>
+              </div>
+              <div>
+                <div className="lbl" style={{marginBottom:6}}>Comparison label</div>
+                <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}}>
+                  {["VS","or","/","·"].map(v=>(
+                    <button key={v} className={`btn bsm ${form.vsLabel===v?"bp":"bo"}`} onClick={()=>setForm({...form,vsLabel:v})}>{v}</button>
+                  ))}
+                  <input className="inp" style={{width:80,fontSize:13}} placeholder="Custom…" value={["VS","or","/","·"].includes(form.vsLabel)?"":form.vsLabel||""} onChange={e=>setForm({...form,vsLabel:e.target.value})}/>
+                </div>
+              </div>
+              <div>
+                <div className="lbl" style={{marginBottom:8}}>Font style</div>
+                <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                  {[
+                    {id:"default",label:"Default",head:"Fraunces",body:"Inter"},
+                    {id:"modern",label:"Modern",head:"DM Sans",body:"DM Sans"},
+                    {id:"editorial",label:"Editorial",head:"Playfair Display",body:"Source Sans 3"},
+                    {id:"civic",label:"Civic",head:"Libre Baskerville",body:"Open Sans"},
+                    {id:"clean",label:"Clean",head:"Plus Jakarta Sans",body:"Plus Jakarta Sans"},
+                  ].map(f=>(
+                    <div key={f.id} onClick={()=>setForm(fm=>({...fm,font:f.id}))} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 12px",borderRadius:"var(--r2)",border:`1.5px solid ${form.font===f.id?"var(--f)":"var(--bd)"}`,background:form.font===f.id?"var(--fp)":"var(--sur)",cursor:"pointer",transition:"all .13s"}}>
+                      <div style={{width:18,height:18,borderRadius:"50%",border:`2px solid ${form.font===f.id?"var(--f)":"var(--bd)"}`,background:form.font===f.id?"var(--f)":"transparent",flexShrink:0}}/>
+                      <div>
+                        <div style={{fontFamily:`'${f.head}',serif`,fontSize:14,fontWeight:400}}>{f.label}</div>
+                        <div style={{fontSize:11,color:"var(--i4)"}}>{f.head} + {f.body}</div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>
@@ -1088,6 +1148,35 @@ function ProjectModal({project,onSave,onClose}){
                   <div style={{width:28,height:28,borderRadius:"var(--r1)",background:form.color,border:"1px solid var(--bd)",flexShrink:0}}/>
                 </div>
               </div>
+              <div>
+                <div className="lbl" style={{marginBottom:6}}>Comparison label</div>
+                <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}}>
+                  {["VS","or","/","·"].map(v=>(
+                    <button key={v} className={`btn bsm ${form.vsLabel===v?"bp":"bo"}`} onClick={()=>setForm({...form,vsLabel:v})}>{v}</button>
+                  ))}
+                  <input className="inp" style={{width:80,fontSize:13}} placeholder="Custom…" value={["VS","or","/","·"].includes(form.vsLabel)?"":form.vsLabel||""} onChange={e=>setForm({...form,vsLabel:e.target.value})}/>
+                </div>
+              </div>
+              <div>
+                <div className="lbl" style={{marginBottom:8}}>Font style</div>
+                <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                  {[
+                    {id:"default",label:"Default",head:"Fraunces",body:"Inter"},
+                    {id:"modern",label:"Modern",head:"DM Sans",body:"DM Sans"},
+                    {id:"editorial",label:"Editorial",head:"Playfair Display",body:"Source Sans 3"},
+                    {id:"civic",label:"Civic",head:"Libre Baskerville",body:"Open Sans"},
+                    {id:"clean",label:"Clean",head:"Plus Jakarta Sans",body:"Plus Jakarta Sans"},
+                  ].map(f=>(
+                    <div key={f.id} onClick={()=>setForm(fm=>({...fm,font:f.id}))} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 12px",borderRadius:"var(--r2)",border:`1.5px solid ${form.font===f.id?"var(--f)":"var(--bd)"}`,background:form.font===f.id?"var(--fp)":"var(--sur)",cursor:"pointer",transition:"all .13s"}}>
+                      <div style={{width:18,height:18,borderRadius:"50%",border:`2px solid ${form.font===f.id?"var(--f)":"var(--bd)"}`,background:form.font===f.id?"var(--f)":"transparent",flexShrink:0}}/>
+                      <div>
+                        <div style={{fontFamily:`'${f.head}',serif`,fontSize:14,fontWeight:400}}>{f.label}</div>
+                        <div style={{fontSize:11,color:"var(--i4)"}}>{f.head} + {f.body}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           )}
 
@@ -1121,6 +1210,15 @@ function VotePage({vs,setVS,onExit}){
   const holdRef=useRef(null);
   const [exitConfirm,setExitConfirm]=useState(false);
   const [previewMode,setPreviewMode]=useState("desktop");
+  const fontVars={
+    default:{h:"'Fraunces',serif",b:"'Inter',sans-serif"},
+    modern:{h:"'DM Sans',sans-serif",b:"'DM Sans',sans-serif"},
+    editorial:{h:"'Playfair Display',serif",b:"'Source Sans 3',sans-serif"},
+    civic:{h:"'Libre Baskerville',serif",b:"'Open Sans',sans-serif"},
+    clean:{h:"'Plus Jakarta Sans',sans-serif",b:"'Plus Jakarta Sans',sans-serif"},
+  };
+  const fv=fontVars[project.font]||fontVars.default;
+
 
   const progress=mode==="roundrobin"&&rrPairs.length>0?(rrIdx/rrPairs.length)*100:0;
   const currentPair=mode==="roundrobin"?rrPairs[rrIdx]:tState&&!tDone(tState)?tState.matchups[tState.matchIdx]:null;
@@ -1155,7 +1253,7 @@ function VotePage({vs,setVS,onExit}){
   const tResults=tState?tTop3(tState):[];
 
   return (
-    <div className="vpage">
+    <div className="vpage" style={{"--vfh":fv.h,"--vfb":fv.b,"--vca":project.color,"--vcap":project.color+"22"}}>
       {project.kioskMode&&(
         <div className="kbar">
           Kiosk Mode — auto-resets after each vote
@@ -1201,7 +1299,7 @@ function VotePage({vs,setVS,onExit}){
       <div style={isPreview&&previewMode==="mobile"?{width:390,flexShrink:0,borderRadius:44,overflow:"hidden",border:"10px solid #1B2A4A",boxShadow:"0 0 0 3px #0a1628, 0 32px 64px rgba(0,0,0,.4)",background:"var(--sur)",position:"relative"}:isPreview&&previewMode==="tablet"?{width:900,maxWidth:"calc(100vw - 48px)",flexShrink:0,borderRadius:18,overflow:"hidden",border:"8px solid #1B2A4A",boxShadow:"0 0 0 2px #0a1628, 0 20px 40px rgba(0,0,0,.25)",background:"var(--sur)"}:{width:"100%",maxWidth:800}}>
       <div className="vbody" style={{borderRadius:"inherit"}}>
         {step==="intro"&&<VoteIntro project={project} pairCount={mode==="roundrobin"?rrPairs.length:tState?.matchups?.length||0} onStart={()=>setVS({...vs,step:"voting"})}/>}
-        {step==="voting"&&currentPair&&<VoteStep project={project} pair={currentPair} progress={progress} onVote={handleVote} isMobile={isPreview&&previewMode==="mobile"}/>}
+        {step==="voting"&&currentPair&&<VoteStep project={project} pair={currentPair} progress={progress} onVote={handleVote} isMobile={isPreview&&previewMode==="mobile"} onRestart={()=>setVS({...vs,step:"intro",tState:mode==="tournament"?initTournament(project.options):null,rrIdx:0,rrVotes:[]})}/>}
         {step==="voting"&&!currentPair&&<div style={{textAlign:"center",padding:32,color:"var(--i3)"}}>Loading…</div>}
         {step==="captcha"&&<CaptchaStep onPass={()=>setVS({...vs,capDone:true,step:project.demoEnabled?"demo":project.showResults?"results":"thanks"})}/>}
         {step==="demo"&&<DemoStep project={project} demo={demo} setDemo={d=>setVS({...vs,demo:d})} onNext={()=>setVS({...vs,step:project.showResults?"results":"thanks"})}/>}
@@ -1216,44 +1314,61 @@ function VotePage({vs,setVS,onExit}){
 
 function VoteIntro({project,pairCount,onStart}){
   return (
-    <div className="fai" style={{textAlign:"center",paddingTop:28}}>
-      <div style={{fontSize:52,marginBottom:12}}>🗳</div>
-      <h2 style={{fontSize:"clamp(20px,4vw,26px)",marginBottom:8,fontWeight:300}}>{project.name}</h2>
-      <p style={{color:"var(--i3)",fontSize:14,lineHeight:1.6,maxWidth:440,margin:"0 auto 14px"}}>{project.description}</p>
-      <div style={{display:"flex",gap:8,justifyContent:"center",margin:"14px 0 22px",flexWrap:"wrap"}}>
-        <div className="chip">{pairCount} comparisons</div>
-        <div className="chip">{project.type==="roundrobin"?"Full Ranking":"Quick Prioritization"}</div>
-        <div className="chip">~{Math.max(1,Math.ceil(pairCount*0.25))} min</div>
+    <div style={{paddingTop:20}}>
+      {project.introBanner&&<img src={project.introBanner} alt="" className="vintro-banner"/>}
+      <div style={{textAlign:"center",paddingBottom:8}}>
+        {project.logo
+          ?<img src={project.logo} alt="Logo" style={{height:48,maxWidth:200,objectFit:"contain",marginBottom:16}}/>
+          :<div style={{width:48,height:48,borderRadius:"var(--r3)",background:project.color,display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,margin:"0 auto 16px"}}>🗳</div>}
+        {project.org&&<div className="vintro-org">{project.org}</div>}
+        <h2 style={{fontFamily:"var(--vfh,var(--fd))",fontSize:"clamp(22px,4vw,30px)",marginBottom:10,fontWeight:400,lineHeight:1.2}}>{project.name}</h2>
+        {project.description&&<p style={{color:"var(--i2)",fontSize:14,lineHeight:1.75,maxWidth:480,margin:"0 auto 12px"}}>{project.description}</p>}
+        {project.introText&&<p style={{color:"var(--i3)",fontSize:13,lineHeight:1.7,maxWidth:460,margin:"0 auto 16px",padding:"12px 16px",background:"var(--sub)",borderRadius:"var(--r2)",borderLeft:"3px solid var(--bd)",textAlign:"left"}}>{project.introText}</p>}
+        <div style={{display:"flex",gap:8,justifyContent:"center",margin:"16px 0 24px",flexWrap:"wrap"}}>
+          <div className="chip">⏱ ~{Math.max(1,Math.ceil(pairCount*0.3))} min</div>
+          <div className="chip">🔢 {pairCount} comparisons</div>
+          <div className="chip">{project.type==="roundrobin"?"Full Ranking":"Quick Prioritization"}</div>
+        </div>
+        <button className="btn blg" style={{background:project.color,color:"white",fontFamily:"var(--vfb,var(--fb))"}} onClick={onStart}>Start voting →</button>
+        <div className="vtrust" style={{marginTop:16}}>
+          <span>🔒</span><span>Anonymous · No account required</span>
+        </div>
       </div>
-      <p style={{fontSize:12,color:"var(--i3)",maxWidth:340,margin:"0 auto 24px",lineHeight:1.6}}>Your responses are anonymous.</p>
-      <button className="btn blg" style={{background:project.color,color:"white"}} onClick={onStart}>Start voting →</button>
     </div>
   );
 }
 
-function VoteStep({project,pair,progress,onVote,isMobile=false}){
+function VoteStep({project,pair,progress,onVote,isMobile=false,onRestart}){
   const [sel,setSel]=useState(null);
   const [a,b]=pair;
   const pick=opt=>{setSel(opt.id);setTimeout(()=>{onVote(opt.id);setSel(null);},260);};
   return (
     <div className="fai">
-      {progress>0&&<div className="vpb"><div className="vpf" style={{width:`${progress}%`,background:project.color}}/></div>}
-      <div className="vq">Which matters more to you?</div>
+      {progress>0&&(
+        <div className="vprog">
+          <div className="vpb" style={{flex:1}}><div className="vpf" style={{width:`${progress}%`,background:project.color}}/></div>
+          <span className="vprogtxt" style={{color:project.color}}>{Math.round(progress)}%</span>
+        </div>
+      )}
+      <div className="vq">{project.vsPrompt||"Which matters more to you?"}</div>
       <div className="vgrid" style={isMobile?{gridTemplateColumns:"1fr",gap:8}:{}}>
         <div className={`vc${sel===a.id?" sel":""}`} onClick={()=>pick(a)} role="button" aria-label={`Vote for ${a.name}`} tabIndex={0} onKeyDown={e=>e.key==="Enter"&&pick(a)} style={{...(sel===a.id?{borderColor:project.color}:{}),minHeight:isMobile?110:160,padding:isMobile?"20px 16px":"24px 14px 20px"}}>
           {a.img&&<img src={a.img} alt={a.altText||a.name} className="vcimg"/>}
           <div className="vcn" style={{fontSize:a.img?"":"clamp(16px,2.5vw,20px)",fontWeight:a.img?500:700}}>{a.name}</div>
           {a.desc&&<div className="vcd">{a.desc}</div>}
         </div>
-        {!isMobile&&<div className="vschip">VS</div>}
-        {isMobile&&<div style={{textAlign:"center",fontSize:11,fontWeight:600,color:"var(--i4)",letterSpacing:".05em"}}>VS</div>}
+        {!isMobile&&<div className="vschip">{project.vsLabel||"VS"}</div>}
+        {isMobile&&<div style={{textAlign:"center",fontSize:11,fontWeight:700,color:"var(--i4)",letterSpacing:".06em",padding:"2px 0"}}>{project.vsLabel||"VS"}</div>}
         <div className={`vc${sel===b.id?" sel":""}`} onClick={()=>pick(b)} role="button" aria-label={`Vote for ${b.name}`} tabIndex={0} onKeyDown={e=>e.key==="Enter"&&pick(b)} style={{...(sel===b.id?{borderColor:project.color}:{}),minHeight:isMobile?110:160,padding:isMobile?"20px 16px":"24px 14px 20px"}}>
           {b.img&&<img src={b.img} alt={b.altText||b.name} className="vcimg"/>}
           <div className="vcn" style={{fontSize:b.img?"":"clamp(16px,2.5vw,20px)",fontWeight:b.img?500:700}}>{b.name}</div>
           {b.desc&&<div className="vcd">{b.desc}</div>}
         </div>
       </div>
-      <p style={{textAlign:"center",fontSize:11,color:"var(--i4)",marginTop:18}}>Your response is anonymous.</p>
+      <div style={{textAlign:"center",marginTop:12}}>
+        <div className="vtrust"><span>🔒</span><span>Anonymous response</span></div>
+        {progress>0&&<button className="vrestart" onClick={()=>onRestart()}>↩ Start over</button>}
+      </div>
     </div>
   );
 }
