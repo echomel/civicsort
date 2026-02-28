@@ -1,4 +1,9 @@
 import { useState, useEffect, useRef } from "react";
+import { createClient } from "@supabase/supabase-js";
+
+const SUPA_URL = "https://ypyadenyrsgyxbltkisk.supabase.co";
+const SUPA_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlweWFkZW55cnNneXhibHRraXNrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyNjc5NDMsImV4cCI6MjA4Nzg0Mzk0M30.MsMevv6qsZ1Il3DSMw0rsAE0ugejE6ePaTnFnM217HE";
+const supabase = createClient(SUPA_URL, SUPA_KEY);
 
 // ── SEED DATA ────────────────────────────────────────────────────────────────
 const SEED = [
@@ -347,11 +352,73 @@ function LangPicker({lang,setLang}){
   );
 }
 
+// ── DB HELPERS ────────────────────────────────────────────────────────────────
+// Convert DB row (snake_case) → app project (camelCase)
+function dbToProject(row){
+  return {
+    id: row.id,
+    name: row.name,
+    slug: row.slug||"",
+    type: row.type,
+    status: row.status,
+    color: row.color,
+    accent: row.accent||"#d96b52",
+    description: row.description||"",
+    introText: row.intro_text||"",
+    introBanner: row.intro_banner||null,
+    vsLabel: row.vs_label||"VS",
+    vsPrompt: row.vs_prompt||"",
+    font: row.font||"default",
+    resultView: row.result_view||"bars",
+    demoEnabled: row.demo_enabled||false,
+    showResults: row.show_results!==false,
+    kioskMode: row.kiosk_mode||false,
+    captcha: row.captcha||false,
+    logo: row.logo||null,
+    options: row.options||[],
+    demographics: row.demographics||[],
+    responses: row.responses||0,
+    isTemplate: row.is_template||false,
+    created: row.created_at?row.created_at.split("T")[0]:"",
+    mockScores: {},
+  };
+}
+// Convert app project → DB row (snake_case)
+function projectToDb(p, userId){
+  return {
+    user_id: userId,
+    name: p.name,
+    slug: p.slug||"",
+    type: p.type,
+    status: p.status||"draft",
+    color: p.color,
+    accent: p.accent||"#d96b52",
+    description: p.description||"",
+    intro_text: p.introText||"",
+    intro_banner: p.introBanner||null,
+    vs_label: p.vsLabel||"VS",
+    vs_prompt: p.vsPrompt||"",
+    font: p.font||"default",
+    result_view: p.resultView||"bars",
+    demo_enabled: p.demoEnabled||false,
+    show_results: p.showResults!==false,
+    kiosk_mode: p.kioskMode||false,
+    captcha: p.captcha||false,
+    logo: p.logo||null,
+    options: p.options||[],
+    demographics: p.demographics||[],
+    responses: p.responses||0,
+    is_template: p.isTemplate||false,
+  };
+}
+
 // ── ROOT ─────────────────────────────────────────────────────────────────────
 export default function App(){
-  const [view,setView]=useState("landing");
+  const [view,setView]=useState("loading");
+  const [user,setUser]=useState(null);
+  const [profile,setProfile]=useState(null);
   const [tab,setTab]=useState("projects");
-  const [projects,setProjects]=useState(SEED);
+  const [projects,setProjects]=useState([]);
   const [editP,setEditP]=useState(null);
   const [showModal,setShowModal]=useState(false);
   const [toast,setToast]=useState(null);
@@ -359,9 +426,80 @@ export default function App(){
   const [exportP,setExportP]=useState(null);
   const [superOpen,setSuperOpen]=useState(false);
   const [confirmDel,setConfirmDel]=useState(null);
+  const [loading,setLoading]=useState(false);
 
   const notify=(msg,type)=>{setToast({msg,type});setTimeout(()=>setToast(null),3000);};
 
+  // ── Auth listener ──────────────────────────────────────────────────────────
+  useEffect(()=>{
+    supabase.auth.getSession().then(({data:{session}})=>{
+      if(session?.user){
+        setUser(session.user);
+        loadProfile(session.user.id);
+        loadProjects(session.user.id);
+        setView("dashboard");
+      } else {
+        setView("landing");
+      }
+    });
+    const {data:{subscription}}=supabase.auth.onAuthStateChange((event,session)=>{
+      // Don't auto-redirect on signup — wait for email confirmation or explicit login
+      if(event==="SIGNED_IN" && session?.user){
+        setUser(session.user);
+        loadProfile(session.user.id);
+        loadProjects(session.user.id);
+        setView("dashboard");
+      } else if(event==="SIGNED_OUT"){
+        setUser(null);setProfile(null);setProjects([]);
+        setView("landing");
+      }
+      // INITIAL_SESSION handled by getSession above
+    });
+    return ()=>subscription.unsubscribe();
+  },[]);
+
+  const loadProfile=async(uid)=>{
+    const {data}=await supabase.from("profiles").select("*").eq("id",uid).single();
+    if(data) setProfile(data);
+  };
+
+  const loadProjects=async(uid)=>{
+    const {data,error}=await supabase.from("projects").select("*").eq("user_id",uid).order("created_at",{ascending:false});
+    if(data) setProjects(data.map(dbToProject));
+    if(error) console.error("loadProjects:",error);
+  };
+
+  // ── Auth actions ───────────────────────────────────────────────────────────
+  const handleLogin=async(email,pass)=>{
+    setLoading(true);
+    const {error}=await supabase.auth.signInWithPassword({email,password:pass});
+    setLoading(false);
+    if(error) return error.message;
+    return null;
+  };
+
+  const handleSignup=async(email,pass,name,org)=>{
+    setLoading(true);
+    const {data,error}=await supabase.auth.signUp({email,password:pass,options:{data:{name,org}}});
+    setLoading(false);
+    if(error) return error.message;
+    // If email confirmation is off, session is immediately available
+    if(data?.session?.user){
+      setUser(data.session.user);
+      loadProfile(data.session.user.id);
+      loadProjects(data.session.user.id);
+      setView("dashboard");
+      return null;
+    }
+    // Email confirmation required — show message
+    return "confirm";
+  };
+
+  const handleLogout=async()=>{
+    await supabase.auth.signOut();
+  };
+
+  // ── Vote launch ────────────────────────────────────────────────────────────
   const launchVote=async p=>{
     let ip="unknown";
     try{const r=await fetch("https://api.ipify.org?format=json");const d=await r.json();ip=d.ip;}catch(e){}
@@ -375,18 +513,69 @@ export default function App(){
     setView("voting");
   };
 
-  const saveProject=data=>{
-    if(data.id){setProjects(ps=>ps.map(p=>p.id===data.id?data:p));notify("Saved","s");}
-    else{setProjects(ps=>[{...data,id:"p"+Date.now(),responses:0,created:new Date().toISOString().split("T")[0],mockScores:{},...ps[0]&&{}}, ...ps]);notify("Created","s");}
+  // ── Save project ───────────────────────────────────────────────────────────
+  const saveProject=async(data)=>{
+    if(!user){notify("Not logged in","e");return;}
+    setLoading(true);
+    if(data.id && !data.id.startsWith("p")){
+      // Existing DB project — update
+      const {error}=await supabase.from("projects").update(projectToDb(data,user.id)).eq("id",data.id);
+      if(error){notify("Save failed","e");setLoading(false);return;}
+      setProjects(ps=>ps.map(p=>p.id===data.id?data:p));
+      notify("Saved","s");
+    } else {
+      // New project — insert
+      const {data:row,error}=await supabase.from("projects").insert(projectToDb(data,user.id)).select().single();
+      if(error){notify("Create failed","e");setLoading(false);return;}
+      setProjects(ps=>[dbToProject(row),...ps]);
+      notify("Created","s");
+    }
+    setLoading(false);
     setShowModal(false);setEditP(null);
   };
+
+  // ── Delete project ────────────────────────────────────────────────────────
+  const deleteProject=async(id)=>{
+    if(!user) return;
+    await supabase.from("projects").delete().eq("id",id);
+    setProjects(ps=>ps.filter(p=>p.id!==id));
+    setConfirmDel(null);
+    notify("Deleted","s");
+  };
+
+  // ── Duplicate project ─────────────────────────────────────────────────────
+  const duplicateProject=async(p)=>{
+    if(!user) return;
+    const copy=projectToDb({...p,name:p.name+" (copy)",status:"draft",responses:0,isTemplate:false},user.id);
+    delete copy.id;
+    const {data:row,error}=await supabase.from("projects").insert(copy).select().single();
+    if(error){notify("Duplicate failed","e");return;}
+    setProjects(ps=>[dbToProject(row),...ps]);
+    notify("Duplicated","s");
+  };
+
+  // ── Toggle launch/close ───────────────────────────────────────────────────
+  const toggleStatus=async(p)=>{
+    const newStatus=p.status==="active"?"closed":"active";
+    await supabase.from("projects").update({status:newStatus}).eq("id",p.id);
+    setProjects(ps=>ps.map(x=>x.id===p.id?{...x,status:newStatus}:x));
+  };
+
+  if(view==="loading") return (
+    <>
+      <style>{CSS}</style>
+      <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center"}}>
+        <div style={{fontSize:13,color:"var(--i4)"}}>Loading…</div>
+      </div>
+    </>
+  );
 
   return (
     <>
       <style>{CSS}</style>
-      {view==="landing" && <Landing onLogin={()=>setView("login")} onDash={()=>setView("dashboard")} onDemo={()=>launchVote(SEED[0])} superOpen={superOpen} setSuperOpen={setSuperOpen}/>}
-      {view==="login"   && <Login onLogin={()=>setView("dashboard")} onBack={()=>setView("landing")}/>}
-      {view==="dashboard" && <Dashboard tab={tab} setTab={setTab} projects={projects} onBack={()=>setView("landing")} onVote={launchVote} onResults={p=>{setExportP(p);setView("export");}} onNew={()=>{setEditP(null);setShowModal(true);}} onEdit={p=>{setEditP(p);setShowModal(true);}} onDelete={id=>setConfirmDel(id)} onDuplicate={p=>setProjects(ps=>[{...p,id:"p"+Date.now(),name:p.name+" (copy)",status:"draft",responses:0,created:new Date().toISOString().split("T")[0],mockScores:{},isTemplate:false},...ps])}/>}
+      {view==="landing" && <Landing onLogin={()=>setView("login")} onDash={()=>setView("login")} onDemo={()=>launchVote(SEED[0])} superOpen={superOpen} setSuperOpen={setSuperOpen}/>}
+      {view==="login"   && <Login onLogin={handleLogin} onSignup={handleSignup} onBack={()=>setView("landing")} loading={loading}/>}
+      {view==="dashboard" && <Dashboard tab={tab} setTab={setTab} projects={projects} user={user} profile={profile} onLogout={handleLogout} onBack={()=>setView("landing")} onVote={launchVote} onResults={p=>{setExportP(p);setView("export");}} onNew={()=>{setEditP(null);setShowModal(true);}} onEdit={p=>{setEditP(p);setShowModal(true);}} onDelete={id=>setConfirmDel(id)} onDuplicate={duplicateProject} onToggleStatus={toggleStatus}/>}
       {view==="voting"  && vs && <VotePage vs={vs} setVS={setVS} onExit={()=>setView("dashboard")}/>}
       {view==="export"  && exportP && <ExportPage project={exportP} projects={projects} onBack={()=>setView("dashboard")}/>}
       {showModal && <ProjectModal project={editP} onSave={saveProject} onClose={()=>{setShowModal(false);setEditP(null);}}/>}
@@ -397,7 +586,7 @@ export default function App(){
             <p style={{fontSize:13,color:"var(--i3)",marginBottom:20,lineHeight:1.6}}>This cannot be undone. All responses and settings will be lost.</p>
             <div style={{display:"flex",gap:8,justifyContent:"center"}}>
               <button className="btn bo bsm" onClick={()=>setConfirmDel(null)}>Cancel</button>
-              <button className="btn bdr bsm" onClick={()=>{setProjects(ps=>ps.filter(p=>p.id!==confirmDel));setConfirmDel(null);}}>Delete</button>
+              <button className="btn bdr bsm" onClick={()=>deleteProject(confirmDel)}>Delete</button>
             </div>
           </div>
         </div>
@@ -615,20 +804,31 @@ function SuperPanel(){
 }
 
 // ── LOGIN ─────────────────────────────────────────────────────────────────────
-function Login({onLogin,onBack}){
+function Login({onLogin,onSignup,onBack,loading}){
   const [mode,setMode]=useState("login");
   const [name,setName]=useState("");
   const [org,setOrg]=useState("");
   const [email,setEmail]=useState("");
   const [pass,setPass]=useState("");
   const [err,setErr]=useState("");
-  const submit=()=>{
+  const [info,setInfo]=useState("");
+
+  const submit=async()=>{
+    setErr("");setInfo("");
     if(!email.trim()){setErr("Email is required.");return;}
     if(!pass.trim()||pass.length<6){setErr("Password must be at least 6 characters.");return;}
     if(mode==="signup"&&!name.trim()){setErr("Name is required.");return;}
-    setErr("");
-    onLogin();
+    if(mode==="login"){
+      const e=await onLogin(email,pass);
+      if(e) setErr(e);
+    } else {
+      const e=await onSignup(email,pass,name,org);
+      if(e==="confirm") setInfo("Check your email to confirm your account, then sign in.");
+      else if(e) setErr(e);
+      // if null, signup succeeded with immediate session — App handles redirect
+    }
   };
+
   return (
     <div style={{minHeight:"100vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:24,background:"var(--bg)"}}>
       <NavLogo onClick={onBack}/>
@@ -638,14 +838,17 @@ function Login({onLogin,onBack}){
         <div style={{display:"flex",flexDirection:"column",gap:12}}>
           {mode==="signup"&&<div className="fi"><label className="lbl">Your name</label><input className="inp" placeholder="Jane Smith" value={name} onChange={e=>setName(e.target.value)}/></div>}
           {mode==="signup"&&<div className="fi"><label className="lbl">Organisation <span style={{color:"var(--i4)"}}>(optional)</span></label><input className="inp" placeholder="City of Springfield" value={org} onChange={e=>setOrg(e.target.value)}/></div>}
-          <div className="fi"><label className="lbl">Email</label><input className="inp" type="email" placeholder="you@agency.com" value={email} onChange={e=>setEmail(e.target.value)}/></div>
-          <div className="fi"><label className="lbl">Password</label><input className="inp" type="password" placeholder="••••••••" value={pass} onChange={e=>setPass(e.target.value)}/></div>
+          <div className="fi"><label className="lbl">Email</label><input className="inp" type="email" placeholder="you@agency.com" value={email} onChange={e=>setEmail(e.target.value)} onKeyDown={e=>e.key==="Enter"&&submit()}/></div>
+          <div className="fi"><label className="lbl">Password</label><input className="inp" type="password" placeholder="••••••••" value={pass} onChange={e=>setPass(e.target.value)} onKeyDown={e=>e.key==="Enter"&&submit()}/></div>
           {err&&<p style={{fontSize:12,color:"var(--rd)",margin:0}}>{err}</p>}
-          <button className="btn bp bmd" style={{justifyContent:"center",marginTop:4}} onClick={submit}>{mode==="login"?"Sign in →":"Create account →"}</button>
+          {info&&<p style={{fontSize:12,color:"var(--gn)",margin:0}}>{info}</p>}
+          <button className="btn bp bmd" style={{justifyContent:"center",marginTop:4}} onClick={submit} disabled={loading}>
+            {loading?"Please wait…":mode==="login"?"Sign in →":"Create account →"}
+          </button>
         </div>
         <p style={{fontSize:12,color:"var(--i3)",textAlign:"center",marginTop:16}}>
-          {mode==="login"?<>New? <span style={{color:"var(--f)",cursor:"pointer",fontWeight:500}} onClick={()=>{setMode("signup");setErr("");}}>Create an account</span></>
-          :<>Already have an account? <span style={{color:"var(--f)",cursor:"pointer",fontWeight:500}} onClick={()=>{setMode("login");setErr("");}}>Sign in</span></>}
+          {mode==="login"?<>New? <span style={{color:"var(--f)",cursor:"pointer",fontWeight:500}} onClick={()=>{setMode("signup");setErr("");setInfo("");}}>Create an account</span></>
+          :<>Already have an account? <span style={{color:"var(--f)",cursor:"pointer",fontWeight:500}} onClick={()=>{setMode("login");setErr("");setInfo("");}}>Sign in</span></>}
         </p>
       </div>
     </div>
@@ -653,7 +856,7 @@ function Login({onLogin,onBack}){
 }
 
 // ── DASHBOARD ─────────────────────────────────────────────────────────────────
-function Dashboard({tab,setTab,projects,onBack,onVote,onResults,onNew,onEdit,onDelete,onDuplicate}){
+function Dashboard({tab,setTab,projects,user,profile,onLogout,onBack,onVote,onResults,onNew,onEdit,onDelete,onDuplicate,onToggleStatus}){
   const items=[{id:"projects",lbl:"Projects"},{id:"analytics",lbl:"Analytics"},{id:"account",lbl:"Account"}];
   return (
     <div>
@@ -670,7 +873,7 @@ function Dashboard({tab,setTab,projects,onBack,onVote,onResults,onNew,onEdit,onD
           {items.map(i=><button key={i.id} className={`sbit${tab===i.id?" on":""}`} onClick={()=>setTab(i.id)}>{i.lbl}</button>)}
         </aside>
         <main className="main">
-          {tab==="projects"  && <ProjectsView projects={projects} onNew={onNew} onVote={onVote} onResults={onResults} onEdit={onEdit} onDelete={onDelete} onDuplicate={p=>onDuplicate(p)}/>}
+          {tab==="projects"  && <ProjectsView projects={projects} onNew={onNew} onVote={onVote} onResults={onResults} onEdit={onEdit} onDelete={onDelete} onDuplicate={onDuplicate} onToggleStatus={onToggleStatus}/>}
           {tab==="analytics" && <AnalyticsView projects={projects}/>}
           {tab==="account"   && <AccountView/>}
         </main>
@@ -679,7 +882,7 @@ function Dashboard({tab,setTab,projects,onBack,onVote,onResults,onNew,onEdit,onD
   );
 }
 
-function ProjectsView({projects,onNew,onVote,onResults,onEdit,onDelete,onDuplicate}){
+function ProjectsView({projects,onNew,onVote,onResults,onEdit,onDelete,onDuplicate,onToggleStatus}){
   return (
     <div className="fai">
       <div className="ph">
@@ -704,7 +907,7 @@ function ProjectsView({projects,onNew,onVote,onResults,onEdit,onDelete,onDuplica
               <button className="btn bp bsm" onClick={()=>onVote(p)}>Preview</button>
               <button className="btn bo bsm" onClick={()=>onResults(p)}>Results</button>
               <button className="btn bo bsm" onClick={()=>onEdit(p)}>Edit</button>
-              <button className={`btn bsm ${p.status==="active"?"bga":"bgg"}`} onClick={()=>onEdit({...p,status:p.status==="active"?"closed":"active"})}>{p.status==="active"?"Close":"Launch"}</button>
+              <button className={`btn bsm ${p.status==="active"?"bga":"bgg"}`} onClick={()=>onToggleStatus?onToggleStatus(p):null}>{p.status==="active"?"Close":"Launch"}</button>
               <button className="btn bg bsm" title="Duplicate" onClick={()=>onDuplicate(p)} style={{marginLeft:"auto"}}>⧉ Copy</button>
               <button className="btn bg bsm" style={{color:"var(--rd)"}} onClick={()=>onDelete(p.id)}>✕</button>
             </div>
@@ -903,11 +1106,12 @@ function ExportPage({project,projects,onBack}){
 }
 
 function genRaw(project){
+  if(!project.responses||project.responses===0) return [];
   const zips=["97201","97202","97203","97204","97205"];
   const ages=["18-24","25-34","35-44","45-54","55-64","65+"];
   const devices=["mobile","tablet","desktop"];
   const ips=["73.162.44.12","24.5.68.201","98.207.34.11","67.180.12.99","47.221.55.180","76.94.200.31"];
-  return Array.from({length:38},(_,i)=>{
+  return Array.from({length:project.responses},(_,i)=>{
     const ts=new Date(Date.now()-Math.random()*7*86400000);
     const opt=project.options[Math.floor(Math.random()*project.options.length)];
     return {id:"r"+(i+1),ts:ts.toISOString(),topChoice:opt.name,zip:Math.random()>.3?zips[Math.floor(Math.random()*zips.length)]:"",age:Math.random()>.4?ages[Math.floor(Math.random()*ages.length)]:"",device:devices[Math.floor(Math.random()*devices.length)],ip:ips[Math.floor(Math.random()*ips.length)],deleted:false};
