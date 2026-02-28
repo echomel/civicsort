@@ -1198,10 +1198,10 @@ function VotePage({vs,setVS,onExit}){
         ))}
       </div>}
       <div style={{background:isPreview&&previewMode!=="desktop"?"#e8eaed":"var(--bg)",flex:1,overflow:"auto",display:"flex",justifyContent:"center",alignItems:"flex-start",padding:isPreview&&previewMode!=="desktop"?"24px 0":"0"}}>
-      <div style={isPreview&&previewMode==="mobile"?{width:390,flexShrink:0,borderRadius:44,overflow:"hidden",border:"10px solid #1B2A4A",boxShadow:"0 0 0 3px #0a1628, 0 32px 64px rgba(0,0,0,.4)",background:"var(--sur)",position:"relative"}:isPreview&&previewMode==="tablet"?{width:768,maxWidth:"calc(100vw - 48px)",flexShrink:0,borderRadius:20,overflow:"hidden",border:"6px solid #1B2A4A",boxShadow:"0 0 0 2px #0a1628, 0 20px 40px rgba(0,0,0,.25)",background:"var(--sur)"}:{width:"100%",maxWidth:800}}>
+      <div style={isPreview&&previewMode==="mobile"?{width:390,flexShrink:0,borderRadius:44,overflow:"hidden",border:"10px solid #1B2A4A",boxShadow:"0 0 0 3px #0a1628, 0 32px 64px rgba(0,0,0,.4)",background:"var(--sur)",position:"relative"}:isPreview&&previewMode==="tablet"?{width:900,maxWidth:"calc(100vw - 48px)",flexShrink:0,borderRadius:18,overflow:"hidden",border:"8px solid #1B2A4A",boxShadow:"0 0 0 2px #0a1628, 0 20px 40px rgba(0,0,0,.25)",background:"var(--sur)"}:{width:"100%",maxWidth:800}}>
       <div className="vbody" style={{borderRadius:"inherit"}}>
         {step==="intro"&&<VoteIntro project={project} pairCount={mode==="roundrobin"?rrPairs.length:tState?.matchups?.length||0} onStart={()=>setVS({...vs,step:"voting"})}/>}
-        {step==="voting"&&currentPair&&<VoteStep project={project} pair={currentPair} progress={progress} onVote={handleVote}/>}
+        {step==="voting"&&currentPair&&<VoteStep project={project} pair={currentPair} progress={progress} onVote={handleVote} isMobile={isPreview&&previewMode==="mobile"}/>}
         {step==="voting"&&!currentPair&&<div style={{textAlign:"center",padding:32,color:"var(--i3)"}}>Loading…</div>}
         {step==="captcha"&&<CaptchaStep onPass={()=>setVS({...vs,capDone:true,step:project.demoEnabled?"demo":project.showResults?"results":"thanks"})}/>}
         {step==="demo"&&<DemoStep project={project} demo={demo} setDemo={d=>setVS({...vs,demo:d})} onNext={()=>setVS({...vs,step:project.showResults?"results":"thanks"})}/>}
@@ -1231,7 +1231,7 @@ function VoteIntro({project,pairCount,onStart}){
   );
 }
 
-function VoteStep({project,pair,progress,onVote}){
+function VoteStep({project,pair,progress,onVote,isMobile=false}){
   const [sel,setSel]=useState(null);
   const [a,b]=pair;
   const pick=opt=>{setSel(opt.id);setTimeout(()=>{onVote(opt.id);setSel(null);},260);};
@@ -1239,14 +1239,17 @@ function VoteStep({project,pair,progress,onVote}){
     <div className="fai">
       {progress>0&&<div className="vpb"><div className="vpf" style={{width:`${progress}%`,background:project.color}}/></div>}
       <div className="vq">Which matters more to you?</div>
-      <div className="vgrid">
-        <div className={`vc${sel===a.id?" sel":""}`} onClick={()=>pick(a)} role="button" aria-label={`Vote for ${a.name}`} tabIndex={0} onKeyDown={e=>e.key==="Enter"&&pick(a)} style={sel===a.id?{borderColor:project.color}:{}}>
-          {a.img?<img src={a.img} alt={a.altText||a.name} className="vcimg"/>:<div style={{fontSize:"clamp(16px,2.5vw,20px)",fontWeight:600,textAlign:"center",padding:"0 8px",lineHeight:1.3}}>{a.name}</div>}
+      <div className="vgrid" style={isMobile?{gridTemplateColumns:"1fr",gap:8}:{}}>
+        <div className={`vc${sel===a.id?" sel":""}`} onClick={()=>pick(a)} role="button" aria-label={`Vote for ${a.name}`} tabIndex={0} onKeyDown={e=>e.key==="Enter"&&pick(a)} style={{...(sel===a.id?{borderColor:project.color}:{}),minHeight:isMobile?110:160,padding:isMobile?"20px 16px":"24px 14px 20px"}}>
+          {a.img&&<img src={a.img} alt={a.altText||a.name} className="vcimg"/>}
+          <div className="vcn" style={{fontSize:a.img?"":"clamp(16px,2.5vw,20px)",fontWeight:a.img?500:700}}>{a.name}</div>
           {a.desc&&<div className="vcd">{a.desc}</div>}
         </div>
-        <div className="vschip">VS</div>
-        <div className={`vc${sel===b.id?" sel":""}`} onClick={()=>pick(b)} role="button" aria-label={`Vote for ${b.name}`} tabIndex={0} onKeyDown={e=>e.key==="Enter"&&pick(b)} style={sel===b.id?{borderColor:project.color}:{}}>
-          {b.img?<img src={b.img} alt={b.altText||b.name} className="vcimg"/>:<div style={{fontSize:"clamp(16px,2.5vw,20px)",fontWeight:600,textAlign:"center",padding:"0 8px",lineHeight:1.3}}>{b.name}</div>}
+        {!isMobile&&<div className="vschip">VS</div>}
+        {isMobile&&<div style={{textAlign:"center",fontSize:11,fontWeight:600,color:"var(--i4)",letterSpacing:".05em"}}>VS</div>}
+        <div className={`vc${sel===b.id?" sel":""}`} onClick={()=>pick(b)} role="button" aria-label={`Vote for ${b.name}`} tabIndex={0} onKeyDown={e=>e.key==="Enter"&&pick(b)} style={{...(sel===b.id?{borderColor:project.color}:{}),minHeight:isMobile?110:160,padding:isMobile?"20px 16px":"24px 14px 20px"}}>
+          {b.img&&<img src={b.img} alt={b.altText||b.name} className="vcimg"/>}
+          <div className="vcn" style={{fontSize:b.img?"":"clamp(16px,2.5vw,20px)",fontWeight:b.img?500:700}}>{b.name}</div>
           {b.desc&&<div className="vcd">{b.desc}</div>}
         </div>
       </div>
