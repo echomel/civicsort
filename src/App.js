@@ -606,19 +606,37 @@ function SuperPanel(){
 
 // ── LOGIN ─────────────────────────────────────────────────────────────────────
 function Login({onLogin,onBack}){
-  const [e,setE]=useState("");const [p,setP]=useState("");
+  const [mode,setMode]=useState("login");
+  const [name,setName]=useState("");
+  const [org,setOrg]=useState("");
+  const [email,setEmail]=useState("");
+  const [pass,setPass]=useState("");
+  const [err,setErr]=useState("");
+  const submit=()=>{
+    if(!email.trim()){setErr("Email is required.");return;}
+    if(!pass.trim()||pass.length<6){setErr("Password must be at least 6 characters.");return;}
+    if(mode==="signup"&&!name.trim()){setErr("Name is required.");return;}
+    setErr("");
+    onLogin();
+  };
   return (
-    <div style={{minHeight:"100vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:24}}>
+    <div style={{minHeight:"100vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:24,background:"var(--bg)"}}>
       <NavLogo onClick={onBack}/>
-      <div className="card" style={{width:"100%",maxWidth:380,padding:28,marginTop:24}}>
-        <h2 style={{fontSize:20,marginBottom:2,fontWeight:300}}>Welcome back</h2>
-        <p style={{fontSize:13,color:"var(--i3)",marginBottom:20}}>Sign in to your account</p>
+      <div className="card" style={{width:"100%",maxWidth:400,padding:32,marginTop:24}}>
+        <h2 style={{fontSize:20,marginBottom:2,fontWeight:300}}>{mode==="login"?"Welcome back":"Create your account"}</h2>
+        <p style={{fontSize:13,color:"var(--i3)",marginBottom:24}}>{mode==="login"?"Sign in to your CivicSort account":"Free to set up. Pay only when you launch."}</p>
         <div style={{display:"flex",flexDirection:"column",gap:12}}>
-          <div className="fi"><label className="lbl">Email</label><input className="inp" type="email" placeholder="you@agency.com" value={e} onChange={ev=>setE(ev.target.value)}/></div>
-          <div className="fi"><label className="lbl">Password</label><input className="inp" type="password" placeholder="••••••••" value={p} onChange={ev=>setP(ev.target.value)}/></div>
-          <button className="btn bp bmd" style={{justifyContent:"center",marginTop:4}} onClick={onLogin}>Sign in →</button>
+          {mode==="signup"&&<div className="fi"><label className="lbl">Your name</label><input className="inp" placeholder="Jane Smith" value={name} onChange={e=>setName(e.target.value)}/></div>}
+          {mode==="signup"&&<div className="fi"><label className="lbl">Organisation <span style={{color:"var(--i4)"}}>(optional)</span></label><input className="inp" placeholder="City of Springfield" value={org} onChange={e=>setOrg(e.target.value)}/></div>}
+          <div className="fi"><label className="lbl">Email</label><input className="inp" type="email" placeholder="you@agency.com" value={email} onChange={e=>setEmail(e.target.value)}/></div>
+          <div className="fi"><label className="lbl">Password</label><input className="inp" type="password" placeholder="••••••••" value={pass} onChange={e=>setPass(e.target.value)}/></div>
+          {err&&<p style={{fontSize:12,color:"var(--rd)",margin:0}}>{err}</p>}
+          <button className="btn bp bmd" style={{justifyContent:"center",marginTop:4}} onClick={submit}>{mode==="login"?"Sign in →":"Create account →"}</button>
         </div>
-        <p style={{fontSize:12,color:"var(--i3)",textAlign:"center",marginTop:16}}>New? <span style={{color:"var(--f)",cursor:"pointer",fontWeight:500}} onClick={onLogin}>Start free trial</span></p>
+        <p style={{fontSize:12,color:"var(--i3)",textAlign:"center",marginTop:16}}>
+          {mode==="login"?<>New? <span style={{color:"var(--f)",cursor:"pointer",fontWeight:500}} onClick={()=>{setMode("signup");setErr("");}}>Create an account</span></>
+          :<>Already have an account? <span style={{color:"var(--f)",cursor:"pointer",fontWeight:500}} onClick={()=>{setMode("login");setErr("");}}>Sign in</span></>}
+        </p>
       </div>
     </div>
   );
@@ -672,11 +690,13 @@ function ProjectsView({projects,onNew,onVote,onResults,onEdit,onDelete,onDuplica
               <span className="chip">{p.type==="roundrobin"?"Full Ranking":"Quick Prioritization"}</span>
               {p.kioskMode&&<span className="chip">📟 Kiosk</span>}
             </div>
-            <div style={{display:"flex",gap:6}}>
+            <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
               <button className="btn bp bsm" onClick={()=>onVote(p)}>Preview</button>
               <button className="btn bo bsm" onClick={()=>onResults(p)}>Results</button>
               <button className="btn bo bsm" onClick={()=>onEdit(p)}>Edit</button>
-              <button className="btn bg bsm" style={{color:"var(--i4)",marginLeft:"auto"}} onClick={()=>onDelete(p.id)}>✕</button>
+              <button className={`btn bsm ${p.status==="active"?"bga":"bgg"}`} onClick={()=>onEdit({...p,status:p.status==="active"?"closed":"active"})}>{p.status==="active"?"Close":"Launch"}</button>
+              <button className="btn bg bsm" title="Duplicate" onClick={()=>onDuplicate(p)} style={{marginLeft:"auto"}}>⧉ Copy</button>
+              <button className="btn bg bsm" style={{color:"var(--rd)"}} onClick={()=>onDelete(p.id)}>✕</button>
             </div>
             <div style={{marginTop:12,padding:"7px 10px",background:"var(--sub)",borderRadius:"var(--r1)",border:"1px solid var(--bd)",display:"flex",alignItems:"center",gap:8}}>
               <span style={{fontSize:11,color:"var(--f)",fontWeight:500}}>civicsort.com/{p.slug}</span>
@@ -1178,8 +1198,8 @@ function VotePage({vs,setVS,onExit}){
         ))}
       </div>}
       <div style={{background:isPreview&&previewMode!=="desktop"?"#e8eaed":"var(--bg)",flex:1,overflow:"auto",display:"flex",justifyContent:"center",alignItems:"flex-start",padding:isPreview&&previewMode!=="desktop"?"24px 0":"0"}}>
-      <div style={isPreview&&previewMode==="mobile"?{width:390,flexShrink:0,borderRadius:40,overflow:"hidden",border:"8px solid #1B2A4A",boxShadow:"0 0 0 2px #0a1628, 0 24px 48px rgba(0,0,0,.35)",background:"var(--sur)",position:"relative"}:isPreview&&previewMode==="tablet"?{width:768,maxWidth:"calc(100vw - 48px)",flexShrink:0,borderRadius:20,overflow:"hidden",border:"6px solid #1B2A4A",boxShadow:"0 0 0 2px #0a1628, 0 20px 40px rgba(0,0,0,.25)",background:"var(--sur)"}:{width:"100%",maxWidth:800}}>
-      <div className="vbody">
+      <div style={isPreview&&previewMode==="mobile"?{width:390,flexShrink:0,borderRadius:44,overflow:"hidden",border:"10px solid #1B2A4A",boxShadow:"0 0 0 3px #0a1628, 0 32px 64px rgba(0,0,0,.4)",background:"var(--sur)",position:"relative"}:isPreview&&previewMode==="tablet"?{width:768,maxWidth:"calc(100vw - 48px)",flexShrink:0,borderRadius:20,overflow:"hidden",border:"6px solid #1B2A4A",boxShadow:"0 0 0 2px #0a1628, 0 20px 40px rgba(0,0,0,.25)",background:"var(--sur)"}:{width:"100%",maxWidth:800}}>
+      <div className="vbody" style={{borderRadius:"inherit"}}>
         {step==="intro"&&<VoteIntro project={project} pairCount={mode==="roundrobin"?rrPairs.length:tState?.matchups?.length||0} onStart={()=>setVS({...vs,step:"voting"})}/>}
         {step==="voting"&&currentPair&&<VoteStep project={project} pair={currentPair} progress={progress} onVote={handleVote}/>}
         {step==="voting"&&!currentPair&&<div style={{textAlign:"center",padding:32,color:"var(--i3)"}}>Loading…</div>}
