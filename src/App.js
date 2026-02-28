@@ -1409,12 +1409,11 @@ function ResultsStep({project,results,mode,onDone}){
   const color=project.color||"#1B2A4A";
   const hex=color; const r2=parseInt(hex.slice(1,3),16); const g2=parseInt(hex.slice(3,5),16); const b2=parseInt(hex.slice(5,7),16);
   const fade=`rgba(${r2},${g2},${b2},0.08)`;
-  const rankColors=["var(--f)","var(--i2)","var(--i3)"];
   return (
     <div style={{paddingBottom:32}}>
       {/* Header with gradient */}
       <div style={{background:`linear-gradient(160deg,${color} 0%,${color}cc 100%)`,borderRadius:"var(--r3)",padding:"24px 20px 28px",marginBottom:24,color:"white",textAlign:"center",position:"relative",overflow:"hidden"}}>
-        <div style={{position:"absolute",inset:0,background:"url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.04'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")",opacity:.4}}/>
+        <div style={{position:"absolute",inset:0,background:"rgba(255,255,255,0.04)",backgroundImage:"radial-gradient(circle at 20% 50%, rgba(255,255,255,.06) 0%, transparent 60%)",opacity:1}}/>
         <div style={{position:"relative"}}>
           <div style={{fontSize:11,fontWeight:700,letterSpacing:".1em",textTransform:"uppercase",opacity:.7,marginBottom:6}}>Results</div>
           <h2 style={{fontFamily:"var(--vfh,var(--fd))",fontSize:"clamp(20px,4vw,26px)",fontWeight:400,marginBottom:4,lineHeight:1.2}}>{project.name}</h2>
