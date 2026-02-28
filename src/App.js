@@ -213,12 +213,12 @@ h1,h2,h3{font-family:var(--fd);}
 .vprog{display:flex;align-items:center;gap:10px;margin-bottom:28px;}
 .vprogtxt{font-size:11px;color:var(--i4);font-weight:500;white-space:nowrap;}
 .vq{text-align:center;font-family:var(--vfh,var(--fd));font-size:clamp(20px,3.5vw,28px);margin-bottom:28px;line-height:1.3;font-weight:400;color:var(--i1);}
-.vgrid{display:grid;grid-template-columns:1fr auto 1fr;gap:12px;align-items:stretch;}
+.vgrid{display:grid;grid-template-columns:1fr auto 1fr;gap:12px;align-items:center;}
 .vc{background:var(--sur);border:1.5px solid var(--bd);border-radius:var(--r4);padding:28px 18px 22px;text-align:center;cursor:pointer;transition:all .18s var(--e);display:flex;flex-direction:column;align-items:center;gap:12px;min-height:180px;justify-content:center;position:relative;overflow:hidden;}
 .vc::before{content:"";position:absolute;inset:0;background:var(--vca,var(--f));opacity:0;transition:opacity .18s;}
 .vc:hover{border-color:var(--vca,var(--f));box-shadow:0 12px 24px rgba(0,0,0,.08);transform:translateY(-3px);}
 .vc:hover::before{opacity:.04;}
-.vc.sel{border-color:var(--vca,var(--f));box-shadow:0 0 0 3px var(--vcap,rgba(27,42,74,.12));}
+.vc.sel{border-color:var(--vca,var(--f));box-shadow:0 0 0 4px var(--vcap,rgba(27,42,74,.15));background:var(--fp);}
 .vc.sel::before{opacity:.06;}
 .vcimg{width:100%;height:150px;object-fit:contain;border-radius:var(--r2);background:var(--sub);padding:4px;}
 .vcn{font-family:var(--vfb,var(--fb));font-weight:600;font-size:15px;line-height:1.3;position:relative;}
@@ -1219,7 +1219,9 @@ function VotePage({vs,setVS,onExit}){
   const fv=fontVars[project.font]||fontVars.default;
 
 
-  const progress=mode==="roundrobin"&&rrPairs.length>0?(rrIdx/rrPairs.length)*100:0;
+  const rrTotal=rrPairs.length||1;
+  const tTotal=tState?.matchups?.length||1;
+  const progress=mode==="roundrobin"?(rrIdx/rrTotal)*100:(tState?((tState.matchIdx||0)/tTotal)*100:0);
   const currentPair=mode==="roundrobin"?rrPairs[rrIdx]:tState&&!tDone(tState)?tState.matchups[tState.matchIdx]:null;
 
   const handleVote=winnerId=>{
@@ -1296,7 +1298,7 @@ function VotePage({vs,setVS,onExit}){
       </div>}
       <div style={{background:isPreview&&previewMode!=="desktop"?"#e8eaed":"var(--bg)",flex:1,overflow:"auto",display:"flex",justifyContent:"center",alignItems:"flex-start",padding:isPreview&&previewMode!=="desktop"?"24px 0":"0"}}>
       <div style={isPreview&&previewMode==="mobile"?{width:390,flexShrink:0,borderRadius:44,overflow:"hidden",border:"10px solid #1B2A4A",boxShadow:"0 0 0 3px #0a1628, 0 32px 64px rgba(0,0,0,.4)",background:"var(--sur)",position:"relative"}:isPreview&&previewMode==="tablet"?{width:900,maxWidth:"calc(100vw - 48px)",flexShrink:0,borderRadius:18,overflow:"hidden",border:"8px solid #1B2A4A",boxShadow:"0 0 0 2px #0a1628, 0 20px 40px rgba(0,0,0,.25)",background:"var(--sur)"}:{width:"100%",maxWidth:800}}>
-      <div className="vbody" style={{borderRadius:"inherit"}}>
+      <div className="vbody">
         {step==="intro"&&<VoteIntro project={project} pairCount={mode==="roundrobin"?rrPairs.length:tState?.matchups?.length||0} onStart={()=>setVS({...vs,step:"voting"})}/>}
         {step==="voting"&&currentPair&&<VoteStep project={project} pair={currentPair} progress={progress} onVote={handleVote} isMobile={isPreview&&previewMode==="mobile"} onRestart={()=>setVS({...vs,step:"intro",tState:mode==="tournament"?initTournament(project.options):null,rrIdx:0,rrVotes:[]})}/>}
         {step==="voting"&&!currentPair&&<div style={{textAlign:"center",padding:32,color:"var(--i3)"}}>Loading…</div>}
@@ -1368,7 +1370,7 @@ function VoteStep({project,pair,progress,onVote,isMobile=false,onRestart}){
           {a.desc&&<div className="vcd">{a.desc}</div>}
         </div>
         {!isMobile&&<div className="vschip">{project.vsLabel||"VS"}</div>}
-        {isMobile&&<div style={{textAlign:"center",fontSize:11,fontWeight:700,color:"var(--i4)",letterSpacing:".06em",padding:"2px 0"}}>{project.vsLabel||"VS"}</div>}
+        {isMobile&&<div style={{textAlign:"center",fontSize:11,fontWeight:700,color:"var(--i4)",letterSpacing:".08em",padding:"8px 0"}}>{project.vsLabel||"VS"}</div>}
         <div className={`vc${sel===b.id?" sel":""}`} onClick={()=>pick(b)} role="button" aria-label={`Vote for ${b.name}`} tabIndex={0} onKeyDown={e=>e.key==="Enter"&&pick(b)} style={{...(sel===b.id?{borderColor:project.color}:{}),minHeight:isMobile?110:160,padding:isMobile?"20px 16px":"24px 14px 20px"}}>
           {b.img&&<img src={b.img} alt={b.altText||b.name} className="vcimg"/>}
           <div className="vcn" style={{fontSize:b.img?"":"clamp(16px,2.5vw,20px)",fontWeight:b.img?500:700}}>{b.name}</div>
