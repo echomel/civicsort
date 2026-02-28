@@ -562,9 +562,11 @@ export default function App(){
   };
 
   const saveProfile=async(patch)=>{
-    if(!user) return;
-    const {error}=await supabase.from("profiles").update(patch).eq("id",user.id);
-    if(error){notify("Save failed","e");return;}
+    if(!user){notify("Not logged in","e");return;}
+    console.log("saveProfile uid:",user.id,"patch:",patch);
+    const {data,error}=await supabase.from("profiles").update(patch).eq("id",user.id).select();
+    console.log("saveProfile result:",data,error);
+    if(error){notify("Save failed: "+error.message,"e");return;}
     setProfile(p=>({...p,...patch}));
     notify("Saved","s");
   };
@@ -973,10 +975,11 @@ function AccountView({user,profile,onProfileSave}){
   const [org,setOrg]=useState(profile?.org||"");
   const [saving,setSaving]=useState(false);
 
-  // Sync if profile loads after mount
+  // Always sync when profile changes
   useEffect(()=>{
-    if(profile){setName(profile.name||"");setOrg(profile.org||"");}
-  },[profile]);
+    setName(profile?.name||"");
+    setOrg(profile?.org||"");
+  },[profile?.name,profile?.org]);
 
   const save=async()=>{
     setSaving(true);
