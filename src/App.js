@@ -386,7 +386,7 @@ export default function App(){
       <style>{CSS}</style>
       {view==="landing" && <Landing onLogin={()=>setView("login")} onDash={()=>setView("dashboard")} onDemo={()=>launchVote(SEED[0])} superOpen={superOpen} setSuperOpen={setSuperOpen}/>}
       {view==="login"   && <Login onLogin={()=>setView("dashboard")} onBack={()=>setView("landing")}/>}
-      {view==="dashboard" && <Dashboard tab={tab} setTab={setTab} projects={projects} onBack={()=>setView("landing")} onVote={launchVote} onResults={p=>{setExportP(p);setView("export");}} onNew={()=>{setEditP(null);setShowModal(true);}} onEdit={p=>{setEditP(p);setShowModal(true);}} onDelete={id=>setConfirmDel(id)} onDuplicate={p=>setProjects(ps=>[{...p,id:"p"+Date.now(),name:p.name+" (copy)",status:"draft",responses:0,created:new Date().toISOString().split("T")[0]},...ps])}/>}
+      {view==="dashboard" && <Dashboard tab={tab} setTab={setTab} projects={projects} onBack={()=>setView("landing")} onVote={launchVote} onResults={p=>{setExportP(p);setView("export");}} onNew={()=>{setEditP(null);setShowModal(true);}} onEdit={p=>{setEditP(p);setShowModal(true);}} onDelete={id=>setConfirmDel(id)} onDuplicate={p=>setProjects(ps=>[{...p,id:"p"+Date.now(),name:p.name+" (copy)",status:"draft",responses:0,created:new Date().toISOString().split("T")[0],mockScores:{},isTemplate:false},...ps])}/>}
       {view==="voting"  && vs && <VotePage vs={vs} setVS={setVS} onExit={()=>setView("dashboard")}/>}
       {view==="export"  && exportP && <ExportPage project={exportP} projects={projects} onBack={()=>setView("dashboard")}/>}
       {showModal && <ProjectModal project={editP} onSave={saveProject} onClose={()=>{setShowModal(false);setEditP(null);}}/>}
