@@ -1220,7 +1220,9 @@ function VotePage({vs,setVS,onExit}){
   };
 
   const rrResults=calcRR(project.options,rrVotes);
-  const tResults=tState?tTop3(tState):[];
+  const tResultsLive=tState?tTop3(tState):[];
+  const mockFallback=[...project.options].map(o=>({...o,score:project.mockScores[o.id]||0})).sort((a,b)=>b.score-a.score);
+  const tResults=tResultsLive.length>0?tResultsLive:mockFallback;
 
   return (
     <div className="vpage" style={{"--vfh":fv.h,"--vfb":fv.b,"--vca":project.color,"--vcap":project.color+"22"}}>
@@ -1250,33 +1252,46 @@ function VotePage({vs,setVS,onExit}){
         </div>
       )}
 
-      <div className="vhdr" style={{borderBottom:`2px solid ${project.color}`}}>
-        {project.logo&&<img src={project.logo} alt="Logo" style={{height:30,maxWidth:110,objectFit:"contain",flexShrink:0,marginRight:4}}/>}
-        <div style={{flex:1}}>
-          <div style={{fontSize:14,fontWeight:500,lineHeight:1.2}}>{project.name}</div>
-          <div style={{fontSize:11,color:"var(--i3)"}}>{project.type==="roundrobin"?"Full Ranking":"Quick Prioritization"}</div>
-        </div>
-        <LangPicker lang={lang} setLang={l=>setVS({...vs,lang:l})}/>
-        {!project.kioskMode&&<button className="btn bg bsm" onClick={onExit} style={{marginLeft:6}}>✕</button>}
-      </div>
-
+      {/* Preview toggle — always outside frame, at top of page */}
       {isPreview&&<div style={{display:"flex",gap:6,justifyContent:"center",padding:"8px 0",borderBottom:"1px solid var(--bd)",background:"var(--sub)",flexShrink:0}}>
         {[{id:"mobile",label:"📱 Mobile"},{id:"tablet",label:"⬜ Tablet"},{id:"desktop",label:"🖥 Desktop"}].map(m=>(
           <button key={m.id} className={`btn bxs ${previewMode===m.id?"bp":"bg"}`} onClick={()=>setPreviewMode(m.id)}>{m.label}</button>
         ))}
       </div>}
-      <div style={{background:isPreview&&previewMode!=="desktop"?"#e8eaed":"var(--bg)",flex:1,overflow:"auto",display:"flex",justifyContent:"center",alignItems:"flex-start",padding:isPreview&&previewMode!=="desktop"?"24px 0":"0"}}>
-      <div style={isPreview&&previewMode==="mobile"?{width:390,flexShrink:0,borderRadius:44,overflow:"hidden",border:"10px solid #1B2A4A",boxShadow:"0 0 0 3px #0a1628, 0 32px 64px rgba(0,0,0,.4)",background:"var(--sur)",position:"relative"}:isPreview&&previewMode==="tablet"?{width:900,maxWidth:"calc(100vw - 48px)",flexShrink:0,borderRadius:18,overflow:"hidden",border:"8px solid #1B2A4A",boxShadow:"0 0 0 2px #0a1628, 0 20px 40px rgba(0,0,0,.25)",background:"var(--sur)"}:{width:"100%",maxWidth:800}}>
-      <div className="vbody">
-        {step==="intro"&&<VoteIntro project={project} pairCount={mode==="roundrobin"?rrPairs.length:tState?.matchups?.length||0} onStart={()=>setVS({...vs,step:"voting"})}/>}
-        {step==="voting"&&currentPair&&<VoteStep project={project} pair={currentPair} progress={progress} onVote={handleVote} isMobile={isPreview&&previewMode==="mobile"} onRestart={()=>setVS({...vs,step:"intro",tState:mode==="tournament"?initTournament(project.options):null,rrIdx:0,rrVotes:[]})}/>}
-        {step==="voting"&&!currentPair&&<div style={{textAlign:"center",padding:32,color:"var(--i3)"}}>Loading…</div>}
-        {step==="captcha"&&<CaptchaStep onPass={()=>setVS({...vs,capDone:true,step:project.demoEnabled?"demo":project.showResults?"results":"thanks"})}/>}
-        {step==="demo"&&<DemoStep project={project} demo={demo} setDemo={d=>setVS({...vs,demo:d})} onNext={()=>setVS({...vs,step:project.showResults?"results":"thanks"})}/>}
-        {step==="results"&&<ResultsStep project={project} results={mode==="roundrobin"?rrResults:tResults} mode={mode} onDone={handleDone}/>}
-        {step==="thanks"&&<ThanksStep kioskMode={project.kioskMode} onDone={handleDone}/>}
-      </div>
-      </div>
+
+      {/* Outer scroll area — grey bg on mobile/tablet */}
+      <div style={{background:isPreview&&previewMode!=="desktop"?"#e8eaed":"var(--bg)",flex:1,overflow:"auto",display:"flex",justifyContent:"center",alignItems:"flex-start",padding:isPreview&&previewMode==="mobile"?"32px 0":isPreview&&previewMode==="tablet"?"28px 0":"0"}}>
+
+        {/* Device frame — wraps header + content together */}
+        <div style={
+          isPreview&&previewMode==="mobile"
+            ? {width:390,flexShrink:0,borderRadius:44,overflow:"hidden",border:"10px solid #1B2A4A",boxShadow:"0 0 0 3px #0a1628, 0 32px 64px rgba(0,0,0,.4)",background:"var(--sur)",display:"flex",flexDirection:"column",maxHeight:"calc(100vh - 100px)"}
+            : isPreview&&previewMode==="tablet"
+            ? {width:820,flexShrink:0,borderRadius:20,overflow:"hidden",border:"8px solid #1B2A4A",boxShadow:"0 0 0 2px #0a1628, 0 20px 40px rgba(0,0,0,.25)",background:"var(--sur)",display:"flex",flexDirection:"column",maxHeight:"calc(100vh - 80px)"}
+            : {width:"100%",maxWidth:800,display:"flex",flexDirection:"column"}
+        }>
+          {/* Vote header — inside frame on all modes */}
+          <div className="vhdr" style={{borderBottom:`2px solid ${project.color}`,flexShrink:0}}>
+            {project.logo&&<img src={project.logo} alt="Logo" style={{height:30,maxWidth:110,objectFit:"contain",flexShrink:0,marginRight:4}}/>}
+            <div style={{flex:1}}>
+              <div style={{fontSize:14,fontWeight:500,lineHeight:1.2}}>{project.name}</div>
+              <div style={{fontSize:11,color:"var(--i3)"}}>{project.type==="roundrobin"?"Full Ranking":"Quick Prioritization"}</div>
+            </div>
+            <LangPicker lang={lang} setLang={l=>setVS({...vs,lang:l})}/>
+            {!project.kioskMode&&<button className="btn bg bsm" onClick={onExit} style={{marginLeft:6}}>✕</button>}
+          </div>
+
+          {/* Scrollable content area */}
+          <div className="vbody" style={{flex:1,overflowY:"auto"}}>
+            {step==="intro"&&<VoteIntro project={project} pairCount={mode==="roundrobin"?rrPairs.length:tState?.matchups?.length||0} onStart={()=>setVS({...vs,step:"voting"})}/>}
+            {step==="voting"&&currentPair&&<VoteStep project={project} pair={currentPair} progress={progress} onVote={handleVote} isMobile={isPreview&&previewMode==="mobile"} onRestart={()=>setVS({...vs,step:"intro",tState:mode==="tournament"?initTournament(project.options):null,rrIdx:0,rrVotes:[]})}/>}
+            {step==="voting"&&!currentPair&&<div style={{textAlign:"center",padding:32,color:"var(--i3)"}}>Loading…</div>}
+            {step==="captcha"&&<CaptchaStep onPass={()=>setVS({...vs,capDone:true,step:project.demoEnabled?"demo":project.showResults?"results":"thanks"})}/>}
+            {step==="demo"&&<DemoStep project={project} demo={demo} setDemo={d=>setVS({...vs,demo:d})} onNext={()=>setVS({...vs,step:project.showResults?"results":"thanks"})}/>}
+            {step==="results"&&<ResultsStep project={project} results={mode==="roundrobin"?rrResults:tResults} mode={mode} onDone={handleDone}/>}
+            {step==="thanks"&&<ThanksStep kioskMode={project.kioskMode} onDone={handleDone}/>}
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -1417,7 +1432,7 @@ function ResultsStep({project,results,mode,onDone}){
         <div style={{position:"relative"}}>
           <div style={{fontSize:11,fontWeight:700,letterSpacing:".1em",textTransform:"uppercase",opacity:.7,marginBottom:6}}>Results</div>
           <h2 style={{fontFamily:"var(--vfh,var(--fd))",fontSize:"clamp(20px,4vw,26px)",fontWeight:400,marginBottom:4,lineHeight:1.2}}>{project.name}</h2>
-          <p style={{fontSize:12,opacity:.7,marginBottom:0}}>{mode==="roundrobin"?"Ranked by community votes":"Top picks from bracket play"}</p>
+          {mode==="roundrobin"&&<p style={{fontSize:12,opacity:.7,marginBottom:0}}>Ranked by community votes</p>}
           {results[0]&&<div style={{marginTop:16,display:"inline-flex",alignItems:"center",gap:8,background:"rgba(255,255,255,.15)",borderRadius:99,padding:"6px 14px"}}>
             <div style={{width:8,height:8,borderRadius:"50%",background:"white"}}/>
             <span style={{fontSize:13,fontWeight:500}}>{results[0].name}</span>
